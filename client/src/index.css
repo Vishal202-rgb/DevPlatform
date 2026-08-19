@@ -1,0 +1,23 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  @apply bg-graphite-950 text-mist-100 font-sans antialiased;
+}
+
+::selection {
+  @apply bg-amber-500/30 text-mist-100;
+}
+
+/* Visible keyboard focus ring, accessible by default */
+:focus-visible {
+  outline: 2px solid theme('colors.amber.400');
+  outline-offset: 2px;
+}
