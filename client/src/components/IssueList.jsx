@@ -16,9 +16,14 @@ function IssueRow({ issue }) {
 
   return (
     <div className="rounded-lg border border-graphite-700 bg-graphite-900">
-      <button
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setExpanded((e) => !e)}
-        className="flex w-full items-start justify-between gap-3 px-4 py-3 text-left"
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') setExpanded((exp) => !exp);
+        }}
+        className="flex w-full cursor-pointer items-start justify-between gap-3 px-4 py-3 text-left"
       >
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -34,11 +39,22 @@ function IssueRow({ issue }) {
               {issue.file}
               {issue.line ? `:${issue.line}` : ''}
             </span>
+            {issue.repository && (
+              <a
+                href={issue.repository.htmlUrl}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="truncate rounded-full bg-graphite-700 px-2 py-0.5 text-[10px] text-amber-400 hover:underline"
+              >
+                {issue.repository.fullName}
+              </a>
+            )}
           </div>
           <p className="mt-1.5 text-sm text-mist-100">{issue.description}</p>
         </div>
         <span className="mt-1 shrink-0 text-mist-500">{expanded ? '−' : '+'}</span>
-      </button>
+      </div>
 
       {expanded && (
         <div className="border-t border-graphite-700 px-4 py-3 text-sm">
