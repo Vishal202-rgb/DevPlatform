@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 
 const navItems = [
   { label: 'Overview', to: '/dashboard', icon: '◧' },
@@ -42,6 +42,12 @@ export default function Sidebar() {
       <div className="rounded-lg border border-graphite-700 bg-graphite-800 p-3 text-xs text-mist-500">
         <p className="font-mono text-amber-400">v0.1.0 — foundation</p>
         <p className="mt-1">GitHub sync and AI analysis land in a later build.</p>
+        <Link
+          to="/dashboard/system-health"
+          className="mt-2 inline-block text-amber-400/80 hover:text-amber-400 hover:underline"
+        >
+          Deployment diagnostics →
+        </Link>
       </div>
     </aside>
   );

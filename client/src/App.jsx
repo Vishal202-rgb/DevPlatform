@@ -71,6 +71,7 @@ import Repositories from './pages/Repositories';
 import AnalysisResult from './pages/AnalysisResult';
 import Analyses from './pages/Analyses';
 import Issues from './pages/Issues';
+import SystemHealth from './pages/SystemHealth';
 import ProtectedRoute from './routes/ProtectedRoute';
 import { useAuth } from './hooks/useAuth';
 
@@ -99,6 +100,7 @@ export default function App() {
           />
           <Route path="/dashboard/analyses" element={<Analyses />} />
           <Route path="/dashboard/issues" element={<Issues />} />
+          <Route path="/dashboard/system-health" element={<SystemHealth />} />
         </Route>
       </Route>
 
