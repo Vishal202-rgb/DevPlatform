@@ -186,7 +186,10 @@ const fetchUserRepositories = async (accessToken, { page = 1, perPage = 30 } = {
         direction: 'desc',
         per_page: perPage,
         page,
-        affiliation: 'owner,collaborator,organization_member',
+        // Only repos the user directly owns - matches the count shown on
+        // their GitHub profile page. (Not collaborator/org-member repos,
+        // which GitHub's own profile "Repositories" count also excludes.)
+        affiliation: 'owner',
       },
     });
     return data;
