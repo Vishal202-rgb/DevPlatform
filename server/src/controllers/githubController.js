@@ -74,13 +74,7 @@ const getProfile = asyncHandler(async (req, res) => {
 // @access  Private
 const listRepositories = asyncHandler(async (req, res) => {
   const user = await githubService.getUserWithGithubToken(req.user.id);
-  const page = Number(req.query.page) || 1;
-  const perPage = Math.min(Number(req.query.perPage) || 30, 100);
-
-  const repos = await githubService.fetchUserRepositories(user.github.accessToken, {
-    page,
-    perPage,
-  });
+  const repos = await githubService.fetchAllUserRepositories(user.github.accessToken);
 
   // Cross-reference which of these the user has already connected for analysis.
   // (Part 3 addition: also expose the Mongo repositoryId + last-analyzed info,
