@@ -288,7 +288,9 @@ const analyzeCode = async (repoLabel, files) => {
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.2,
-        maxOutputTokens: 8192,
+        maxOutputTokens: 32768, // gemini-3.6-flash supports up to 65,536 - the old 8192 cap
+        // truncated JSON mid-output on repos with many files/issues, which
+        // then failed to parse. Leaving headroom below the true ceiling.
         responseMimeType: 'application/json',
         responseSchema: RESPONSE_SCHEMA,
       },
@@ -309,6 +311,12 @@ const analyzeCode = async (repoLabel, files) => {
   try {
     parsed = JSON.parse(rawText);
   } catch (err) {
+    if (finishReason === 'MAX_TOKENS') {
+      throw new ApiError(
+        502,
+        'The analysis output was cut off before it finished (too many files/issues for one response). Try analyzing a smaller set of files, or re-run - this repository may just be large enough to need more than one pass.'
+      );
+    }
     throw new ApiError(502, 'Gemini returned a response that could not be parsed as JSON.');
   }
 
@@ -377,7 +385,7 @@ ${originalContent}`;
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.1,
-        maxOutputTokens: 8192,
+        maxOutputTokens: 16384, // a full-file rewrite can be long for larger source files
       },
     });
   } catch (error) {
@@ -389,6 +397,12 @@ ${originalContent}`;
 
   if (!rawText.trim()) {
     throw new ApiError(502, `Gemini returned no fixed file content (finishReason: ${candidate?.finishReason || 'unknown'}).`);
+  }
+  if (candidate?.finishReason === 'MAX_TOKENS') {
+    throw new ApiError(
+      502,
+      'The rewritten file was cut off before it finished (the file may be too large for a single fix). Try fixing this issue manually instead.'
+    );
   }
 
   return stripCodeFences(rawText);
