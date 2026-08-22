@@ -22,7 +22,7 @@ function timeAgo(dateString) {
 }
 
 export default function RepositoryCard({ repo, onConnect, isConnecting, onAnalyze, isAnalyzing }) {
-  const dotColor = languageColors[repo.language] || '#8B93A7';
+    const dotColor = languageColors[repo.language] || '#84848C';
 
   return (
     <div className="flex flex-col justify-between rounded-xl border border-graphite-700 bg-graphite-900 p-5 shadow-panel">

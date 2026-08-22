@@ -23,8 +23,8 @@ export default function AuthLayout() {
         <div
           className="absolute inset-0 opacity-[0.07]"
           style={{
-            backgroundImage:
-              'linear-gradient(#F5B942 1px, transparent 1px), linear-gradient(90deg, #F5B942 1px, transparent 1px)',
+                        backgroundImage:
+              'linear-gradient(#27272A 1px, transparent 1px), linear-gradient(90deg, #27272A 1px, transparent 1px)',
             backgroundSize: '32px 32px',
           }}
         />

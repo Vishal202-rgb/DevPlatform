@@ -1,8 +1,8 @@
 const severityConfig = {
-  critical: { label: 'Critical', color: '#D46A6A', bg: 'bg-red-500/10', text: 'text-red-400' },
-  high: { label: 'High', color: '#E8A33D', bg: 'bg-orange-400/10', text: 'text-orange-400' },
-  medium: { label: 'Medium', color: '#F5B942', bg: 'bg-amber-400/10', text: 'text-amber-400' },
-  low: { label: 'Low', color: '#5B9BD5', bg: 'bg-sky-400/10', text: 'text-sky-400' },
+  critical: { label: 'Critical', color: '#DC2626', bg: 'bg-red-500/10', text: 'text-red-600' },
+  high: { label: 'High', color: '#EA580C', bg: 'bg-orange-500/10', text: 'text-orange-600' },
+  medium: { label: 'Medium', color: '#CA8A04', bg: 'bg-yellow-400/10', text: 'text-yellow-700' },
+  low: { label: 'Low', color: '#0284C7', bg: 'bg-sky-500/10', text: 'text-sky-600' },
 };
 
 export default function SeveritySummary({ summary }) {
