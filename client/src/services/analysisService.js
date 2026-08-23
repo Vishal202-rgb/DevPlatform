@@ -91,3 +91,18 @@ export const applyIssueFix = async (analysisId, issueId) => {
   const { data } = await api.post(`/analysis/result/${analysisId}/issues/${issueId}/apply-fix`);
   return data.data; // { issue, branch, compareUrl }
 };
+
+export const shareAnalysis = async (analysisId) => {
+  const { data } = await api.post(`/analysis/result/${analysisId}/share`);
+  return data.data; // { shareToken, shareUrl }
+};
+
+export const unshareAnalysis = async (analysisId) => {
+  const { data } = await api.delete(`/analysis/result/${analysisId}/share`);
+  return data;
+};
+
+export const fetchSharedReport = async (shareToken) => {
+  const { data } = await api.get(`/shared/${shareToken}`);
+  return data.data.report;
+};

@@ -211,6 +211,15 @@ const analysisSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+        // Public share link (this feature). Presence of a non-null token means
+    // this specific analysis can be viewed read-only, without login, via
+    // GET /api/shared/:shareToken. Owner can revoke it any time by clearing
+    // this field - it never grants write access (Apply Fix stays owner-only).
+    shareToken: {
+      type: String,
+      unique: true,
+      sparse: true, // allows many documents with shareToken: null
+    },
   },
   {
     timestamps: true, // createdAt = when the analysis ran, updatedAt

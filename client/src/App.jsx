@@ -72,8 +72,10 @@ import AnalysisResult from './pages/AnalysisResult';
 import Analyses from './pages/Analyses';
 import Issues from './pages/Issues';
 import SystemHealth from './pages/SystemHealth';
+import SharedAnalysis from './pages/SharedAnalysis';
 import ProtectedRoute from './routes/ProtectedRoute';
 import { useAuth } from './hooks/useAuth';
+
 
 function PublicOnlyRoute({ children }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -89,6 +91,8 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
       </Route>
+      {/* Public, standalone - no auth required, no dashboard chrome */}
+      <Route path="/share/:shareToken" element={<SharedAnalysis />} />
 
       <Route element={<ProtectedRoute />}>
         <Route element={<DashboardLayout />}>

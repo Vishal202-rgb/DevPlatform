@@ -1,110 +1,8 @@
-// // const asyncHandler = require('express-async-handler');
-// // const ApiError = require('../utils/ApiError');
-// // const analysisService = require('../services/analysisService');
-
-// // // @desc    Run a fresh Gemini analysis of a connected repository
-// // // @route   POST /api/analysis/:repositoryId/run
-// // // @access  Private
-// // const runAnalysis = asyncHandler(async (req, res) => {
-// //   const { repositoryId } = req.params;
-// //   if (!repositoryId) {
-// //     throw new ApiError(400, 'A repository id is required');
-// //   }
-
-// //   const analysis = await analysisService.runAnalysis(req.user.id, repositoryId);
-
-// //   res.status(201).json({
-// //     success: true,
-// //     message: 'Analysis completed',
-// //     data: { analysis },
-// //   });
-// // });
-
-// // // @desc    Get the most recent analysis for a repository
-// // // @route   GET /api/analysis/:repositoryId/latest
-// // // @access  Private
-// // const getLatestAnalysis = asyncHandler(async (req, res) => {
-// //   const analysis = await analysisService.getLatestAnalysis(req.user.id, req.params.repositoryId);
-// //   res.status(200).json({ success: true, data: { analysis } });
-// // });
-
-// // // @desc    List past analyses for a repository (lightweight, no issue detail)
-// // // @route   GET /api/analysis/:repositoryId/history
-// // // @access  Private
-// // const getAnalysisHistory = asyncHandler(async (req, res) => {
-// //   const history = await analysisService.getAnalysisHistory(req.user.id, req.params.repositoryId);
-// //   res.status(200).json({ success: true, count: history.length, data: { history } });
-// // });
-
-// // // @desc    Get a single analysis by id (full issue detail)
-// // // @route   GET /api/analysis/result/:analysisId
-// // // @access  Private
-// // const getAnalysisById = asyncHandler(async (req, res) => {
-// //   const analysis = await analysisService.getAnalysisById(req.user.id, req.params.analysisId);
-// //   res.status(200).json({ success: true, data: { analysis } });
-// // });
-
-// // module.exports = { runAnalysis, getLatestAnalysis, getAnalysisHistory, getAnalysisById };
-// const asyncHandler = require('express-async-handler');
-// const ApiError = require('../utils/ApiError');
-// const analysisService = require('../services/analysisService');
-
-// const runAnalysis = asyncHandler(async (req, res) => {
-//   const { repositoryId } = req.params;
-//   if (!repositoryId) {
-//     throw new ApiError(400, 'A repository id is required');
-//   }
-
-//   const analysis = await analysisService.runAnalysis(req.user.id, repositoryId);
-
-//   res.status(201).json({
-//     success: true,
-//     message: 'Analysis completed',
-//     data: { analysis },
-//   });
-// });
-
-// const getLatestAnalysis = asyncHandler(async (req, res) => {
-//   const analysis = await analysisService.getLatestAnalysis(req.user.id, req.params.repositoryId);
-//   res.status(200).json({ success: true, data: { analysis } });
-// });
-
-// const getAnalysisHistory = asyncHandler(async (req, res) => {
-//   const history = await analysisService.getAnalysisHistory(req.user.id, req.params.repositoryId);
-//   res.status(200).json({ success: true, count: history.length, data: { history } });
-// });
-
-// const getAnalysisById = asyncHandler(async (req, res) => {
-//   const analysis = await analysisService.getAnalysisById(req.user.id, req.params.analysisId);
-//   res.status(200).json({ success: true, data: { analysis } });
-// });
-
-// const listAllAnalyses = asyncHandler(async (req, res) => {
-//   const analyses = await analysisService.getAllAnalysesForUser(req.user.id);
-//   res.status(200).json({ success: true, count: analyses.length, data: { analyses } });
-// });
-
-// const listAllIssues = asyncHandler(async (req, res) => {
-//   const { severity } = req.query;
-//   const issues = await analysisService.getAllIssuesForUser(req.user.id, severity);
-//   res.status(200).json({ success: true, count: issues.length, data: { issues } });
-// });
-
-// module.exports = {
-//   runAnalysis,
-//   getLatestAnalysis,
-//   getAnalysisHistory,
-//   getAnalysisById,
-//   listAllAnalyses,
-//   listAllIssues,
-// };
 const asyncHandler = require('express-async-handler');
 const ApiError = require('../utils/ApiError');
+const env = require('../config/env');
 const analysisService = require('../services/analysisService');
 
-// @desc    Run a fresh Gemini analysis of a connected repository
-// @route   POST /api/analysis/:repositoryId/run
-// @access  Private
 const runAnalysis = asyncHandler(async (req, res) => {
   const { repositoryId } = req.params;
   if (!repositoryId) {
@@ -120,50 +18,32 @@ const runAnalysis = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Get the most recent analysis for a repository
-// @route   GET /api/analysis/:repositoryId/latest
-// @access  Private
 const getLatestAnalysis = asyncHandler(async (req, res) => {
   const analysis = await analysisService.getLatestAnalysis(req.user.id, req.params.repositoryId);
   res.status(200).json({ success: true, data: { analysis } });
 });
 
-// @desc    List past analyses for a repository (lightweight, no issue detail)
-// @route   GET /api/analysis/:repositoryId/history
-// @access  Private
 const getAnalysisHistory = asyncHandler(async (req, res) => {
   const history = await analysisService.getAnalysisHistory(req.user.id, req.params.repositoryId);
   res.status(200).json({ success: true, count: history.length, data: { history } });
 });
 
-// @desc    Get a single analysis by id (full issue detail)
-// @route   GET /api/analysis/result/:analysisId
-// @access  Private
 const getAnalysisById = asyncHandler(async (req, res) => {
   const analysis = await analysisService.getAnalysisById(req.user.id, req.params.analysisId);
   res.status(200).json({ success: true, data: { analysis } });
 });
 
-// @desc    List every analysis across all of the user's repositories (newest first)
-// @route   GET /api/analysis
-// @access  Private
 const listAllAnalyses = asyncHandler(async (req, res) => {
   const analyses = await analysisService.getAllAnalysesForUser(req.user.id);
   res.status(200).json({ success: true, count: analyses.length, data: { analyses } });
 });
 
-// @desc    List every issue from the latest analysis of each connected repository
-// @route   GET /api/analysis/issues?severity=critical (severity optional)
-// @access  Private
 const listAllIssues = asyncHandler(async (req, res) => {
   const { severity } = req.query;
   const issues = await analysisService.getAllIssuesForUser(req.user.id, severity);
   res.status(200).json({ success: true, count: issues.length, data: { issues } });
 });
 
-// @desc    Apply one issue's fix - commits a corrected file to a new branch
-// @route   POST /api/analysis/result/:analysisId/issues/:issueId/apply-fix
-// @access  Private
 const applyIssueFix = asyncHandler(async (req, res) => {
   const { analysisId, issueId } = req.params;
   const result = await analysisService.applyIssueFix(req.user.id, analysisId, issueId);
@@ -175,6 +55,34 @@ const applyIssueFix = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Enable public read-only sharing for an analysis (idempotent)
+// @route   POST /api/analysis/result/:analysisId/share
+// @access  Private
+const shareAnalysis = asyncHandler(async (req, res) => {
+  const shareToken = await analysisService.enableSharing(req.user.id, req.params.analysisId);
+  res.status(200).json({
+    success: true,
+    message: 'Sharing enabled',
+    data: { shareToken, shareUrl: `${env.clientUrl}/share/${shareToken}` },
+  });
+});
+
+// @desc    Disable public sharing for an analysis
+// @route   DELETE /api/analysis/result/:analysisId/share
+// @access  Private
+const unshareAnalysis = asyncHandler(async (req, res) => {
+  await analysisService.disableSharing(req.user.id, req.params.analysisId);
+  res.status(200).json({ success: true, message: 'Sharing disabled' });
+});
+
+// @desc    Public, unauthenticated read-only view of a shared analysis
+// @route   GET /api/shared/:shareToken
+// @access  Public
+const getSharedAnalysis = asyncHandler(async (req, res) => {
+  const report = await analysisService.getSharedAnalysis(req.params.shareToken);
+  res.status(200).json({ success: true, data: { report } });
+});
+
 module.exports = {
   runAnalysis,
   getLatestAnalysis,
@@ -183,4 +91,7 @@ module.exports = {
   listAllAnalyses,
   listAllIssues,
   applyIssueFix,
+  shareAnalysis,
+  unshareAnalysis,
+  getSharedAnalysis,
 };
