@@ -231,6 +231,88 @@ const applyIssueFix = async (userId, analysisId, issueId) => {
   }
 };
 
+const generateIssueTests = async (userId, analysisId, issueId) => {
+  const analysis = await Analysis.findOne({ _id: analysisId, user: userId });
+  if (!analysis) {
+    throw new ApiError(404, 'Analysis not found.');
+  }
+
+  const issue = analysis.issues.id(issueId);
+  if (!issue) {
+    throw new ApiError(404, 'Issue not found on this analysis.');
+  }
+
+  const repository = await getOwnedRepository(userId, analysis.repository);
+  const user = await githubService.getUserWithGithubToken(userId);
+  const { accessToken } = user.github;
+  const { githubOwner, name, defaultBranch } = repository;
+
+  try {
+    const { content: originalContent } = await githubService.fetchFileContent(
+      accessToken,
+      githubOwner,
+      name,
+      issue.file,
+      defaultBranch
+    );
+
+    const testContent = await geminiService.generateTests(issue.file, originalContent, issue);
+
+    if (!testContent) {
+      throw new ApiError(422, 'Gemini did not produce test content for this file.');
+    }
+
+    return { testContent };
+  } catch (error) {
+    throw error instanceof ApiError ? error : new ApiError(502, error.message || 'Failed to generate tests.');
+  }
+};
+
+const applyIssueTests = async (userId, analysisId, issueId, testContent) => {
+  const analysis = await Analysis.findOne({ _id: analysisId, user: userId });
+  if (!analysis) {
+    throw new ApiError(404, 'Analysis not found.');
+  }
+
+  const issue = analysis.issues.id(issueId);
+  if (!issue) {
+    throw new ApiError(404, 'Issue not found on this analysis.');
+  }
+
+  const repository = await getOwnedRepository(userId, analysis.repository);
+  const user = await githubService.getUserWithGithubToken(userId);
+  const { accessToken } = user.github;
+  const { githubOwner, name, defaultBranch, htmlUrl } = repository;
+
+  try {
+    const branchName = `devplatform-tests/${issueId.toString().slice(-8)}-${Date.now().toString(36)}`;
+    const headSha = await githubService.getBranchHeadSha(accessToken, githubOwner, name, defaultBranch);
+    await githubService.createBranch(accessToken, githubOwner, name, branchName, headSha);
+
+    // Determine the test file path by inserting .test before the extension
+    const parts = issue.file.split('.');
+    const ext = parts.pop();
+    const testFilePath = `${parts.join('.')}.test.${ext}`;
+
+    await githubService.commitFileUpdate(
+      accessToken,
+      githubOwner,
+      name,
+      testFilePath,
+      testContent,
+      `Add tests for: ${issue.file}`,
+      branchName,
+      null // new file
+    );
+
+    const compareUrl = `${htmlUrl}/compare/${defaultBranch}...${branchName}?expand=1`;
+
+    return { issue, branch: branchName, compareUrl };
+  } catch (error) {
+    throw error instanceof ApiError ? error : new ApiError(502, error.message || 'Failed to apply tests.');
+  }
+};
+
 /**
  * Enable public read-only sharing for an analysis. Idempotent - calling
  * this again on an already-shared analysis returns the SAME token/link
@@ -302,6 +384,8 @@ module.exports = {
   getAllAnalysesForUser,
   getAllIssuesForUser,
   applyIssueFix,
+  generateIssueTests,
+  applyIssueTests,
   enableSharing,
   disableSharing,
   getSharedAnalysis,

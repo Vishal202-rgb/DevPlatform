@@ -408,4 +408,155 @@ ${originalContent}`;
   return stripCodeFences(rawText);
 };
 
-module.exports = { analyzeCode, generateFixedFile, SEVERITIES, CATEGORIES };
+const CHAT_SYSTEM_INSTRUCTION = `You are a helpful programming assistant with deep knowledge of the user's codebase.
+You are given a subset of files from a repository. Use these files to answer the user's questions about the codebase.
+If the answer cannot be found in the provided files, say so clearly. 
+When explaining code, cite the file paths and line numbers where appropriate.
+Format your response in markdown.`;
+
+const chatWithContext = async (repoLabel, files, message, history = []) => {
+  if (!env.geminiApiKey) {
+    throw new ApiError(500, 'Gemini is not configured on the server (missing GEMINI_API_KEY).');
+  }
+
+  const fileBlocks = files
+    .map((f) => `=== FILE: ${f.path} ===\n${f.content}${f.truncated ? '\n... (truncated)' : ''}`)
+    .join('\n\n');
+
+  const contextPrompt = `Repository Context: ${repoLabel}\nFiles:\n${fileBlocks}\n\nUser Question: ${message}`;
+  
+  const contents = [
+    ...history.map(msg => ({
+      role: msg.role === 'user' ? 'user' : 'model',
+      parts: [{ text: msg.content }]
+    })),
+    { role: 'user', parts: [{ text: contextPrompt }] }
+  ];
+
+  let response;
+  try {
+    response = await callGeminiWithRetry(`/models/${env.geminiModel}:generateContent?key=${env.geminiApiKey}`, {
+      systemInstruction: { role: 'system', parts: [{ text: CHAT_SYSTEM_INSTRUCTION }] },
+      contents,
+      generationConfig: {
+        temperature: 0.2,
+        maxOutputTokens: 8192,
+      },
+    });
+  } catch (error) {
+    throw toApiError(error, 'Gemini API request failed.');
+  }
+
+  const candidate = response.data?.candidates?.[0];
+  const reply = candidate?.content?.parts?.map((p) => p.text).join('') || '';
+
+  if (!reply) {
+    throw new ApiError(502, `Gemini returned no response (finishReason: ${candidate?.finishReason || 'unknown'}).`);
+  }
+
+  return { reply };
+};
+
+const TEST_SYSTEM_INSTRUCTION = `You are a precise code-testing assistant.
+You will be given the full current contents of one source file and a description of ONE specific issue found in it.
+Generate a comprehensive test file for this file, including normal cases, edge cases, invalid inputs, and error cases where applicable.
+Rules:
+- Include imports necessary for the test framework (e.g. Jest, Vitest).
+- Assume standard testing library setups if React.
+- Output ONLY the raw test file content. No markdown code fences, no explanation - just the file, ready to be written to disk as-is.`;
+
+const generateTests = async (filePath, originalContent, issue) => {
+  if (!env.geminiApiKey) {
+    throw new ApiError(500, 'Gemini is not configured on the server (missing GEMINI_API_KEY).');
+  }
+
+  const prompt = `File: ${filePath}
+Issue: [${issue.severity}] [${issue.category}] ${issue.description}
+
+--- CURRENT FILE CONTENT ---
+${originalContent}`;
+
+  let response;
+  try {
+    response = await callGeminiWithRetry(`/models/${env.geminiModel}:generateContent?key=${env.geminiApiKey}`, {
+      systemInstruction: { role: 'system', parts: [{ text: TEST_SYSTEM_INSTRUCTION }] },
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.2,
+        maxOutputTokens: 16384,
+      },
+    });
+  } catch (error) {
+    throw toApiError(error, 'Gemini API request failed.');
+  }
+
+  const candidate = response.data?.candidates?.[0];
+  const rawText = candidate?.content?.parts?.map((p) => p.text).join('') || '';
+
+  if (!rawText.trim()) {
+    throw new ApiError(502, `Gemini returned no test content (finishReason: ${candidate?.finishReason || 'unknown'}).`);
+  }
+
+  return stripCodeFences(rawText);
+};
+
+const ARCH_SYSTEM_INSTRUCTION = `You are a software architect analyzing a codebase.
+You will be given the file tree and contents of key files from a repository.
+Map out the module dependencies, imports, and architectural relationships.
+Return the result strictly as a JSON object matching this structure:
+{
+  "nodes": [{ "id": "file/path/or/module", "name": "ModuleName", "val": 1, "color": "#hex" }],
+  "links": [{ "source": "file/path/or/module", "target": "other/file/path" }]
+}
+Rules:
+- "id" must match the source and target strings.
+- "name" should be the file name or class/module name.
+- Group similar types of files by "color".
+- Return ONLY the JSON object. Do not include markdown code fences or other text.`;
+
+const generateArchitectureGraph = async (repoLabel, files) => {
+  if (!env.geminiApiKey) {
+    throw new ApiError(500, 'Gemini is not configured on the server (missing GEMINI_API_KEY).');
+  }
+
+  const fileBlocks = files
+    .map((f) => `=== FILE: ${f.path} ===\n${f.content}${f.truncated ? '\n... (truncated)' : ''}`)
+    .join('\n\n');
+
+  const prompt = `Repository: ${repoLabel}\n\n${fileBlocks}\n\nGenerate the architecture graph in JSON format.`;
+
+  let response;
+  try {
+    response = await callGeminiWithRetry(`/models/${env.geminiModel}:generateContent?key=${env.geminiApiKey}`, {
+      systemInstruction: { role: 'system', parts: [{ text: ARCH_SYSTEM_INSTRUCTION }] },
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: 8192,
+        responseMimeType: 'application/json',
+      },
+    });
+  } catch (error) {
+    throw toApiError(error, 'Gemini API request failed.');
+  }
+
+  const candidate = response.data?.candidates?.[0];
+  const rawText = candidate?.content?.parts?.map((p) => p.text).join('') || '';
+
+  if (!rawText.trim()) {
+    throw new ApiError(502, 'Gemini returned no architecture graph.');
+  }
+
+  try {
+    const jsonStr = stripCodeFences(rawText);
+    const parsed = JSON.parse(jsonStr);
+    return {
+      nodes: Array.isArray(parsed.nodes) ? parsed.nodes : [],
+      links: Array.isArray(parsed.links) ? parsed.links : [],
+    };
+  } catch (err) {
+    throw new ApiError(502, 'Gemini returned a response that could not be parsed as JSON.');
+  }
+};
+
+module.exports = { analyzeCode, generateFixedFile, chatWithContext, generateTests, generateArchitectureGraph, SEVERITIES, CATEGORIES };

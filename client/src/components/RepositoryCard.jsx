@@ -96,6 +96,22 @@ export default function RepositoryCard({ repo, onConnect, isConnecting, onAnalyz
           {isAnalyzing ? 'Starting…' : 'Analyze repository'}
         </button>
       </div>
+      {repo.connected && (
+        <div className="mt-2 flex gap-2">
+          <Link
+            to={`/dashboard/repositories/${repo.repositoryId}/chat`}
+            className="flex-1 rounded-lg border border-graphite-700 bg-graphite-800 px-3 py-2 text-center text-xs font-semibold text-mist-100 transition-colors hover:bg-graphite-700"
+          >
+            Chat with Codebase
+          </Link>
+          <Link
+            to={`/dashboard/repositories/${repo.repositoryId}/architecture`}
+            className="flex-1 rounded-lg border border-graphite-700 bg-graphite-800 px-3 py-2 text-center text-xs font-semibold text-mist-100 transition-colors hover:bg-graphite-700"
+          >
+            Architecture
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

@@ -106,3 +106,13 @@ export const fetchSharedReport = async (shareToken) => {
   const { data } = await api.get(`/shared/${shareToken}`);
   return data.data.report;
 };
+
+export const generateIssueTests = async (analysisId, issueId) => {
+  const { data } = await api.post(`/analysis/result/${analysisId}/issues/${issueId}/generate-tests`);
+  return data.data; // { testContent }
+};
+
+export const applyIssueTests = async (analysisId, issueId, testContent) => {
+  const { data } = await api.post(`/analysis/result/${analysisId}/issues/${issueId}/apply-tests`, { testContent });
+  return data.data; // { issue, branch, compareUrl }
+};

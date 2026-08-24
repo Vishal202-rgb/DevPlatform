@@ -55,6 +55,33 @@ const applyIssueFix = asyncHandler(async (req, res) => {
   });
 });
 
+const generateIssueTests = asyncHandler(async (req, res) => {
+  const { analysisId, issueId } = req.params;
+  const result = await analysisService.generateIssueTests(req.user.id, analysisId, issueId);
+
+  res.status(200).json({
+    success: true,
+    message: `Generated tests successfully.`,
+    data: result,
+  });
+});
+
+const applyIssueTests = asyncHandler(async (req, res) => {
+  const { analysisId, issueId } = req.params;
+  const { testContent } = req.body;
+  if (!testContent) {
+    throw new ApiError(400, 'Test content is required');
+  }
+
+  const result = await analysisService.applyIssueTests(req.user.id, analysisId, issueId, testContent);
+
+  res.status(200).json({
+    success: true,
+    message: `Tests committed to branch "${result.branch}". Review and open a PR on GitHub.`,
+    data: result,
+  });
+});
+
 // @desc    Enable public read-only sharing for an analysis (idempotent)
 // @route   POST /api/analysis/result/:analysisId/share
 // @access  Private
@@ -91,6 +118,8 @@ module.exports = {
   listAllAnalyses,
   listAllIssues,
   applyIssueFix,
+  generateIssueTests,
+  applyIssueTests,
   shareAnalysis,
   unshareAnalysis,
   getSharedAnalysis,

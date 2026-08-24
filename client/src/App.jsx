@@ -73,6 +73,8 @@ import Analyses from './pages/Analyses';
 import Issues from './pages/Issues';
 import SystemHealth from './pages/SystemHealth';
 import SharedAnalysis from './pages/SharedAnalysis';
+import Chat from './pages/Chat';
+import Architecture from './pages/Architecture';
 import ProtectedRoute from './routes/ProtectedRoute';
 import { useAuth } from './hooks/useAuth';
 
@@ -101,6 +103,14 @@ export default function App() {
           <Route
             path="/dashboard/repositories/:repositoryId/analysis"
             element={<AnalysisResult />}
+          />
+          <Route
+            path="/dashboard/repositories/:repositoryId/chat"
+            element={<Chat />}
+          />
+          <Route
+            path="/dashboard/repositories/:repositoryId/architecture"
+            element={<Architecture />}
           />
           <Route path="/dashboard/analyses" element={<Analyses />} />
           <Route path="/dashboard/issues" element={<Issues />} />

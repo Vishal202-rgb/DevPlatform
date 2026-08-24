@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { severityConfig } from './SeveritySummary';
-import { applyIssueFix } from '../services/analysisService';
+import { applyIssueFix, generateIssueTests, applyIssueTests } from '../services/analysisService';
 
 const categoryLabels = {
   bug: 'Bug',
@@ -16,6 +16,12 @@ function IssueRow({ issue, analysisId, readOnly }) {
   const [issueState, setIssueState] = useState(issue);
   const [isApplying, setIsApplying] = useState(false);
   const [applyError, setApplyError] = useState('');
+  
+  const [isGeneratingTests, setIsGeneratingTests] = useState(false);
+  const [generatedTestContent, setGeneratedTestContent] = useState('');
+  const [isApplyingTests, setIsApplyingTests] = useState(false);
+  const [testApplyError, setTestApplyError] = useState('');
+  const [testApplySuccess, setTestApplySuccess] = useState('');
 
   const cfg = severityConfig[issueState.severity] || severityConfig.low;
   const effectiveAnalysisId = issueState.analysisId || analysisId;
@@ -33,6 +39,38 @@ function IssueRow({ issue, analysisId, readOnly }) {
       setIssueState((prev) => ({ ...prev, fixStatus: 'failed' }));
     } finally {
       setIsApplying(false);
+    }
+  };
+
+  const handleGenerateTests = async (e) => {
+    e.stopPropagation();
+    if (!effectiveAnalysisId || !issueState._id || isGeneratingTests) return;
+    setIsGeneratingTests(true);
+    setGeneratedTestContent('');
+    setTestApplyError('');
+    try {
+      const result = await generateIssueTests(effectiveAnalysisId, issueState._id);
+      setGeneratedTestContent(result.testContent);
+    } catch (err) {
+      setTestApplyError(err.message || 'Failed to generate tests.');
+    } finally {
+      setIsGeneratingTests(false);
+    }
+  };
+
+  const handleApplyTests = async (e) => {
+    e.stopPropagation();
+    if (!effectiveAnalysisId || !issueState._id || isApplyingTests || !generatedTestContent) return;
+    setIsApplyingTests(true);
+    setTestApplyError('');
+    setTestApplySuccess('');
+    try {
+      const result = await applyIssueTests(effectiveAnalysisId, issueState._id, generatedTestContent);
+      setTestApplySuccess(`Tests applied to branch ${result.branch}. View PR: ${result.compareUrl}`);
+    } catch (err) {
+      setTestApplyError(err.message || 'Failed to apply tests.');
+    } finally {
+      setIsApplyingTests(false);
     }
   };
 
@@ -142,6 +180,16 @@ function IssueRow({ issue, analysisId, readOnly }) {
               </button>
             ) : null}
 
+            {!readOnly && (
+              <button
+                onClick={handleGenerateTests}
+                disabled={isGeneratingTests}
+                className="rounded-lg border border-amber-400 text-amber-400 px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-amber-400/10 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isGeneratingTests ? 'Generating Tests…' : 'Generate Tests'}
+              </button>
+            )}
+
             {issueState.fixBranch && issueState.fixStatus === 'applied' && (
               <span className="font-mono text-[11px] text-mist-500">
                 {issueState.fixBranch}
@@ -153,6 +201,32 @@ function IssueRow({ issue, analysisId, readOnly }) {
             <p className="mt-2 text-xs text-red-400">
               {applyError}
             </p>
+          )}
+
+          {generatedTestContent && (
+            <div className="mt-4 border-t border-graphite-800 pt-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-mist-500">
+                Generated Tests
+              </p>
+              <pre className="mt-2 overflow-x-auto rounded-lg bg-graphite-950 p-3 font-mono text-xs text-amber-400 max-h-64">
+                {generatedTestContent}
+              </pre>
+              <div className="mt-3 flex items-center gap-3">
+                <button
+                  onClick={handleApplyTests}
+                  disabled={isApplyingTests}
+                  className="rounded-lg bg-emerald-400 px-3 py-1.5 text-xs font-semibold text-graphite-950 transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isApplyingTests ? 'Applying Tests…' : 'Apply Tests'}
+                </button>
+                {testApplySuccess && (
+                  <span className="text-xs text-emerald-400">{testApplySuccess}</span>
+                )}
+                {testApplyError && (
+                  <span className="text-xs text-red-400">{testApplyError}</span>
+                )}
+              </div>
+            </div>
           )}
         </div>
       )}
