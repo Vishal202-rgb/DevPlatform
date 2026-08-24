@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../services/api';
+import MarkdownRenderer from '../components/MarkdownRenderer';
 
 export default function Chat() {
   const { repositoryId } = useParams();
@@ -17,16 +18,11 @@ export default function Chat() {
     scrollToBottom();
   }, [messages]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!input.trim() || isLoading) return;
-
-    const userMsg = input.trim();
+  const sendQuery = async (userMsg) => {
+    if (!userMsg.trim() || isLoading) return;
+    
     setInput('');
-    
-    // We send history in a simplified format to the backend
     const currentHistory = messages.map(m => ({ role: m.role, content: m.content }));
-    
     setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
     setIsLoading(true);
 
@@ -35,13 +31,57 @@ export default function Chat() {
         message: userMsg,
         history: currentHistory
       });
-      
       setMessages(prev => [...prev, { role: 'model', content: data.data.reply }]);
     } catch (err) {
       setMessages(prev => [...prev, { role: 'model', content: 'Error: ' + (err.response?.data?.message || err.message) }]);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    sendQuery(input);
+  };
+
+  const renderMessageContent = (msg) => {
+    if (msg.role === 'user') {
+      return msg.content;
+    }
+    
+    // Check for suggested follow-ups
+    const parts = msg.content.split('### Suggested Follow-ups');
+    const mainContent = parts[0];
+    
+    let followUps = [];
+    if (parts.length > 1) {
+      const listMatches = parts[1].match(/[-*] (.*)/g);
+      if (listMatches) {
+        followUps = listMatches.map(m => m.replace(/^[-*]\s*/, '').trim());
+      }
+    }
+
+    return (
+      <div className="w-full">
+        <MarkdownRenderer content={mainContent} />
+        {followUps.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-graphite-700">
+            <p className="text-xs font-semibold uppercase text-mist-500 mb-2">Suggested Follow-ups</p>
+            <div className="flex flex-wrap gap-2">
+              {followUps.map((question, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => sendQuery(question)}
+                  className="text-left bg-graphite-700 hover:bg-graphite-600 px-3 py-2 rounded-lg text-sm text-mist-300 transition-colors"
+                >
+                  {question}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -67,19 +107,21 @@ export default function Chat() {
           <div className="space-y-4">
             {messages.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[80%] rounded-lg p-3 ${
+                <div className={`max-w-[85%] rounded-lg p-4 ${
                   msg.role === 'user' 
                     ? 'bg-amber-400 text-graphite-950 rounded-tr-none' 
-                    : 'bg-graphite-800 text-mist-100 rounded-tl-none whitespace-pre-wrap'
+                    : 'bg-graphite-800 text-mist-100 rounded-tl-none'
                 }`}>
-                  {msg.content}
+                  {renderMessageContent(msg)}
                 </div>
               </div>
             ))}
             {isLoading && (
               <div className="flex justify-start">
-                <div className="max-w-[80%] rounded-lg p-3 bg-graphite-800 text-mist-100 rounded-tl-none animate-pulse">
-                  Thinking...
+                <div className="max-w-[85%] rounded-lg p-4 bg-graphite-800 text-mist-100 rounded-tl-none flex items-center gap-2">
+                  <span className="flex h-2 w-2 rounded-full bg-amber-400 animate-pulse"></span>
+                  <span className="flex h-2 w-2 rounded-full bg-amber-400 animate-pulse delay-75"></span>
+                  <span className="flex h-2 w-2 rounded-full bg-amber-400 animate-pulse delay-150"></span>
                 </div>
               </div>
             )}

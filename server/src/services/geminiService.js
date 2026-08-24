@@ -408,11 +408,53 @@ ${originalContent}`;
   return stripCodeFences(rawText);
 };
 
+const RELEVANCE_SYSTEM_INSTRUCTION = `You are an expert codebase navigation assistant.
+Given a list of file paths in a repository and a user query, identify which files (if any) are highly relevant to answering the query.
+Return the result strictly as a JSON array of strings containing the exact file paths.
+Only return files that exist in the provided list. If no files are relevant, return an empty array. Do not return more than 10 files.`;
+
+const findRelevantFiles = async (repoLabel, treePaths, message) => {
+  if (!env.geminiApiKey) {
+    throw new ApiError(500, 'Gemini is not configured on the server (missing GEMINI_API_KEY).');
+  }
+
+  const prompt = `Repository: ${repoLabel}\n\nFile Tree:\n${treePaths.join('\n')}\n\nUser Query: ${message}`;
+
+  let response;
+  try {
+    response = await callGeminiWithRetry(`/models/${env.geminiModel}:generateContent?key=${env.geminiApiKey}`, {
+      systemInstruction: { role: 'system', parts: [{ text: RELEVANCE_SYSTEM_INSTRUCTION }] },
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: 2048,
+        responseMimeType: 'application/json',
+      },
+    });
+  } catch (error) {
+    throw toApiError(error, 'Gemini API request failed.');
+  }
+
+  const candidate = response.data?.candidates?.[0];
+  const rawText = candidate?.content?.parts?.map((p) => p.text).join('') || '';
+
+  if (!rawText.trim()) return [];
+
+  try {
+    const parsed = JSON.parse(rawText);
+    return Array.isArray(parsed) ? parsed.slice(0, 10) : [];
+  } catch (err) {
+    return [];
+  }
+};
+
 const CHAT_SYSTEM_INSTRUCTION = `You are a helpful programming assistant with deep knowledge of the user's codebase.
-You are given a subset of files from a repository. Use these files to answer the user's questions about the codebase.
-If the answer cannot be found in the provided files, say so clearly. 
-When explaining code, cite the file paths and line numbers where appropriate.
-Format your response in markdown.`;
+You are given a subset of files from a repository that were deemed relevant to the user's query.
+Use ONLY these files to answer the user's questions about the codebase.
+CRITICAL INSTRUCTION: If the answer cannot be found in the provided files, clearly state that you do not have the relevant context instead of hallucinating or making assumptions.
+When explaining code, cite the exact file paths and line numbers (e.g. \`path/to/file.js:42\`) where appropriate.
+Format your response in Markdown, using code blocks with appropriate language tags for code snippets.
+At the end of your response, provide 2 or 3 suggested follow-up questions formatted as an unordered list under the heading "### Suggested Follow-ups".`;
 
 const chatWithContext = async (repoLabel, files, message, history = []) => {
   if (!env.geminiApiKey) {
@@ -423,7 +465,7 @@ const chatWithContext = async (repoLabel, files, message, history = []) => {
     .map((f) => `=== FILE: ${f.path} ===\n${f.content}${f.truncated ? '\n... (truncated)' : ''}`)
     .join('\n\n');
 
-  const contextPrompt = `Repository Context: ${repoLabel}\nFiles:\n${fileBlocks}\n\nUser Question: ${message}`;
+  const contextPrompt = `Repository Context: ${repoLabel}\nFiles Provided:\n${fileBlocks}\n\nUser Question: ${message}`;
   
   const contents = [
     ...history.map(msg => ({
@@ -559,4 +601,4 @@ const generateArchitectureGraph = async (repoLabel, files) => {
   }
 };
 
-module.exports = { analyzeCode, generateFixedFile, chatWithContext, generateTests, generateArchitectureGraph, SEVERITIES, CATEGORIES };
+module.exports = { analyzeCode, generateFixedFile, findRelevantFiles, chatWithContext, generateTests, generateArchitectureGraph, SEVERITIES, CATEGORIES };
