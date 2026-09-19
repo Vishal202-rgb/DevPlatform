@@ -10,6 +10,8 @@ const {
   applyIssueFix,
   generateIssueTests,
   applyIssueTests,
+  generatePrDetails,
+  createIssuePullRequest,
   shareAnalysis,
   unshareAnalysis,
 } = require('../controllers/analysisController');
@@ -26,6 +28,8 @@ router.get('/result/:analysisId', getAnalysisById);
 router.post('/result/:analysisId/issues/:issueId/apply-fix', applyIssueFix);
 router.post('/result/:analysisId/issues/:issueId/generate-tests', generateIssueTests);
 router.post('/result/:analysisId/issues/:issueId/apply-tests', applyIssueTests);
+router.post('/result/:analysisId/issues/:issueId/generate-pr', generatePrDetails);
+router.post('/result/:analysisId/issues/:issueId/create-pr', createIssuePullRequest);
 router.post('/result/:analysisId/share', shareAnalysis);
 router.delete('/result/:analysisId/share', unshareAnalysis);
 

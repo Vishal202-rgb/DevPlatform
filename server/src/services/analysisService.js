@@ -337,10 +337,137 @@ const applyIssueTests = async (userId, analysisId, issueId, testContent) => {
 
     const compareUrl = `${htmlUrl}/compare/${defaultBranch}...${branchName}?expand=1`;
 
+    issue.testBranch = branchName;
+    issue.testCompareUrl = compareUrl;
+    issue.testAppliedAt = new Date();
+    await analysis.save();
+
     return { issue, branch: branchName, compareUrl };
   } catch (error) {
     throw error instanceof ApiError ? error : new ApiError(502, error.message || 'Failed to apply tests.');
   }
+};
+
+const generatePrDetails = async (userId, analysisId, issueId, { branchType = 'fix', branchName } = {}) => {
+  const analysis = await Analysis.findOne({ _id: analysisId, user: userId });
+  if (!analysis) {
+    throw new ApiError(404, 'Analysis not found.');
+  }
+
+  const issue = analysis.issues.id(issueId);
+  if (!issue) {
+    throw new ApiError(404, 'Issue not found on this analysis.');
+  }
+
+  const repository = await getOwnedRepository(userId, analysis.repository);
+  const user = await githubService.getUserWithGithubToken(userId);
+  const { accessToken } = user.github;
+  const { githubOwner, name, defaultBranch } = repository;
+
+  const targetBranch =
+    branchName ||
+    (branchType === 'test'
+      ? issue.testBranch || issue.fixBranch
+      : issue.fixBranch || issue.testBranch);
+
+  if (!targetBranch) {
+    throw new ApiError(400, 'No branch found for this issue. Apply fix or apply tests first to create a branch.');
+  }
+
+  // 1. Fetch exact git diff from GitHub compare API
+  const compareResult = await githubService.compareBranches(
+    accessToken,
+    githubOwner,
+    name,
+    defaultBranch,
+    targetBranch
+  );
+
+  if (!compareResult.files || compareResult.files.length === 0) {
+    throw new ApiError(400, 'No file changes detected between branches. Cannot generate PR for an empty diff.');
+  }
+
+  // 2. Generate with Gemini, falling back cleanly if Gemini is temporarily unavailable
+  let prDetails;
+  let isFallback = false;
+  try {
+    prDetails = await geminiService.generatePullRequestDetails({
+      repoLabel: repository.fullName,
+      baseBranch: defaultBranch,
+      headBranch: targetBranch,
+      issue,
+      changedFiles: compareResult.files,
+      actionType: branchType,
+    });
+  } catch (geminiError) {
+    // eslint-disable-next-line no-console
+    console.warn(`[analysis] Gemini PR generation failed: ${geminiError.message}. Using structured fallback template.`);
+    isFallback = true;
+    const isTest = branchType === 'test';
+    const filesList = compareResult.files.map((f) => `- \`${f.filename}\``).join('\n');
+    prDetails = {
+      title: isTest ? `Test: Add tests for ${issue.file}` : `Fix: ${issue.description.slice(0, 60)}`,
+      description: `## Summary\n${
+        isTest
+          ? `Add automated test suite for \`${issue.file}\`.`
+          : `Apply fix for issue in \`${issue.file}\`: ${issue.description}`
+      }\n\n## Changes\n${compareResult.files
+        .map((f) => `- Update \`${f.filename}\` (${f.status})`)
+        .join('\n')}\n\n## Why\n${issue.description}\n\n## Testing\n- Generated automated tests and validated code changes.\n\n## Files Changed\n${filesList}`,
+    };
+  }
+
+  return {
+    title: prDetails.title,
+    description: prDetails.description,
+    baseBranch: defaultBranch,
+    headBranch: targetBranch,
+    filesChanged: compareResult.files,
+    isFallback,
+  };
+};
+
+const createIssuePullRequest = async (
+  userId,
+  analysisId,
+  issueId,
+  { title, description, headBranch, baseBranch }
+) => {
+  if (!title || !title.trim()) {
+    throw new ApiError(400, 'A pull request title is required.');
+  }
+  if (!headBranch || !headBranch.trim()) {
+    throw new ApiError(400, 'A head branch is required.');
+  }
+
+  const analysis = await Analysis.findOne({ _id: analysisId, user: userId });
+  if (!analysis) {
+    throw new ApiError(404, 'Analysis not found.');
+  }
+
+  const issue = analysis.issues.id(issueId);
+  if (!issue) {
+    throw new ApiError(404, 'Issue not found on this analysis.');
+  }
+
+  const repository = await getOwnedRepository(userId, analysis.repository);
+  const user = await githubService.getUserWithGithubToken(userId);
+  const { accessToken } = user.github;
+  const { githubOwner, name, defaultBranch } = repository;
+
+  const pr = await githubService.createPullRequest(accessToken, githubOwner, name, {
+    title: title.trim(),
+    body: (description || '').trim(),
+    head: headBranch.trim(),
+    base: (baseBranch || defaultBranch).trim(),
+  });
+
+  issue.prUrl = pr.htmlUrl;
+  issue.prNumber = pr.number;
+  issue.prStatus = 'created';
+  await analysis.save();
+
+  return { pr, issue };
 };
 
 /**
@@ -416,6 +543,8 @@ module.exports = {
   applyIssueFix,
   generateIssueTests,
   applyIssueTests,
+  generatePrDetails,
+  createIssuePullRequest,
   enableSharing,
   disableSharing,
   getSharedAnalysis,

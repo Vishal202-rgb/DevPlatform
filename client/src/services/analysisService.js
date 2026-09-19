@@ -121,3 +121,14 @@ export const applyIssueTests = async (analysisId, issueId, testContent) => {
   const { data } = await api.post(`/analysis/result/${analysisId}/issues/${issueId}/apply-tests`, { testContent });
   return data.data; // { issue, branch, compareUrl }
 };
+
+export const generateIssuePr = async (analysisId, issueId, payload = {}) => {
+  const { data } = await api.post(`/analysis/result/${analysisId}/issues/${issueId}/generate-pr`, payload);
+  return data.data; // { title, description, baseBranch, headBranch, filesChanged, isFallback }
+};
+
+export const createIssuePr = async (analysisId, issueId, payload) => {
+  const { data } = await api.post(`/analysis/result/${analysisId}/issues/${issueId}/create-pr`, payload);
+  return data.data; // { pr, issue }
+};
+

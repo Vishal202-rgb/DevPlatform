@@ -159,6 +159,33 @@ const issueSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    // Test tracking
+    testBranch: {
+      type: String,
+      default: null,
+    },
+    testCompareUrl: {
+      type: String,
+      default: null,
+    },
+    testAppliedAt: {
+      type: Date,
+      default: null,
+    },
+    // Pull Request tracking
+    prStatus: {
+      type: String,
+      enum: ['none', 'created', 'failed'],
+      default: 'none',
+    },
+    prNumber: {
+      type: Number,
+      default: null,
+    },
+    prUrl: {
+      type: String,
+      default: null,
+    },
   },
   { _id: true }
 );

@@ -95,6 +95,34 @@ const applyIssueTests = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Generate PR title & description for an issue's fix or test branch
+// @route   POST /api/analysis/result/:analysisId/issues/:issueId/generate-pr
+// @access  Private
+const generatePrDetails = asyncHandler(async (req, res) => {
+  const { analysisId, issueId } = req.params;
+  const details = await analysisService.generatePrDetails(req.user.id, analysisId, issueId, req.body);
+  res.status(200).json({
+    success: true,
+    message: details.isFallback
+      ? 'Generated standard PR template. Gemini was unavailable, but you can edit before submitting.'
+      : 'Generated PR title and description.',
+    data: details,
+  });
+});
+
+// @desc    Create a GitHub Pull Request from an issue branch
+// @route   POST /api/analysis/result/:analysisId/issues/:issueId/create-pr
+// @access  Private
+const createIssuePullRequest = asyncHandler(async (req, res) => {
+  const { analysisId, issueId } = req.params;
+  const result = await analysisService.createIssuePullRequest(req.user.id, analysisId, issueId, req.body);
+  res.status(201).json({
+    success: true,
+    message: `Pull Request #${result.pr.number} created successfully on GitHub.`,
+    data: result,
+  });
+});
+
 // @desc    Enable public read-only sharing for an analysis (idempotent)
 // @route   POST /api/analysis/result/:analysisId/share
 // @access  Private
@@ -134,6 +162,8 @@ module.exports = {
   applyIssueFix,
   generateIssueTests,
   applyIssueTests,
+  generatePrDetails,
+  createIssuePullRequest,
   shareAnalysis,
   unshareAnalysis,
   getSharedAnalysis,

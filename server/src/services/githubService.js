@@ -425,6 +425,57 @@ const commitFileUpdate = async (accessToken, owner, repo, path, newContent, mess
   }
 };
 
+/**
+ * Compare two branches to get changed files and patch diff.
+ */
+const compareBranches = async (accessToken, owner, repo, base, head) => {
+  try {
+    const { data } = await githubApi.get(
+      `/repos/${owner}/${repo}/compare/${encodeURIComponent(base)}...${encodeURIComponent(head)}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    const files = (data.files || []).map((f) => ({
+      filename: f.filename,
+      status: f.status,
+      additions: f.additions,
+      deletions: f.deletions,
+      changes: f.changes,
+      patch: f.patch || '',
+    }));
+    return {
+      totalCommits: data.total_commits || 0,
+      files,
+      aheadBy: data.ahead_by || 0,
+      behindBy: data.behind_by || 0,
+    };
+  } catch (error) {
+    handleGithubError(error, `Failed to compare branches "${base}" and "${head}" on GitHub.`);
+  }
+};
+
+/**
+ * Create a new Pull Request on GitHub.
+ */
+const createPullRequest = async (accessToken, owner, repo, { title, body, head, base }) => {
+  try {
+    const { data } = await githubApi.post(
+      `/repos/${owner}/${repo}/pulls`,
+      { title, body, head, base },
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    return {
+      id: data.id,
+      number: data.number,
+      title: data.title,
+      htmlUrl: data.html_url,
+      state: data.state,
+      createdAt: data.created_at,
+    };
+  } catch (error) {
+    handleGithubError(error, `Failed to create pull request for branch "${head}" on GitHub.`);
+  }
+};
+
 module.exports = {
   createOAuthState,
   verifyOAuthState,
@@ -444,4 +495,6 @@ module.exports = {
   getBranchHeadSha,
   createBranch,
   commitFileUpdate,
+  compareBranches,
+  createPullRequest,
 };

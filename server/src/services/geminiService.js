@@ -604,6 +604,118 @@ const generateArchitectureGraph = async (repoLabel, files, onStatusUpdate) => {
   }
 };
 
+const PR_DESCRIPTION_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    title: {
+      type: 'STRING',
+      description: 'Concise, professional PR title summarizing the changes.',
+    },
+    description: {
+      type: 'STRING',
+      description:
+        'Structured Markdown PR description containing ## Summary, ## Changes, ## Why, ## Testing, and ## Files Changed sections.',
+    },
+  },
+  required: ['title', 'description'],
+};
+
+const PR_SYSTEM_INSTRUCTION = `You are a staff software engineer creating a GitHub Pull Request title and description.
+You will be provided with information about an issue, the affected repository, the branches, and the exact git diff/changed files.
+
+Rules:
+- Generate a concise, professional, clear PR title (e.g., "Fix: Prevent SQL injection in auth query" or "Test: Add comprehensive tests for payment validator").
+- Generate a structured Markdown PR description based ONLY on the actual diff and changed files provided.
+- Do NOT invent changes, features, claims, or files that are not present in the diff.
+- The description MUST strictly follow this Markdown structure:
+
+## Summary
+Brief explanation of what changed.
+
+## Changes
+Bullet list of important modifications.
+
+## Why
+Explain the issue or reason for the change.
+
+## Testing
+Mention tests generated/run or validation performed.
+
+## Files Changed
+Mention the important affected files.
+
+- Return your output strictly matching the provided JSON schema.`;
+
+const generatePullRequestDetails = async ({
+  repoLabel,
+  baseBranch,
+  headBranch,
+  issue,
+  changedFiles = [],
+  actionType = 'fix',
+  onStatusUpdate,
+}) => {
+  if (!env.geminiApiKey) {
+    throw new ApiError(500, 'Gemini is not configured on the server (missing GEMINI_API_KEY).');
+  }
+
+  if (!changedFiles.length) {
+    throw new ApiError(400, 'No file changes detected between branches. Cannot generate PR for an empty diff.');
+  }
+
+  const filesSummary = changedFiles
+    .map(
+      (f) =>
+        `File: ${f.filename} (${f.status}, +${f.additions || 0}/-${f.deletions || 0})\nDiff:\n${f.patch || '(new/binary file)'}`
+    )
+    .join('\n\n');
+
+  const prompt = `Repository: ${repoLabel}
+Base Branch: ${baseBranch}
+Head Branch: ${headBranch}
+Action Type: ${actionType === 'test' ? 'Generate & Apply Tests' : 'Apply Fix'}
+
+Related Issue Context:
+File: ${issue?.file || 'N/A'} (line ${issue?.line || 'N/A'})
+Severity: ${issue?.severity || 'N/A'} | Category: ${issue?.category || 'N/A'}
+Description: ${issue?.description || 'N/A'}
+Recommendation: ${issue?.recommendation || 'N/A'}
+
+Actual Changes & Git Diff:
+${filesSummary}`;
+
+  const { response } = await callGeminiWithRetryAndFallback(
+    (_model) => ({
+      systemInstruction: { role: 'system', parts: [{ text: PR_SYSTEM_INSTRUCTION }] },
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.2,
+        maxOutputTokens: 4096,
+        responseMimeType: 'application/json',
+        responseSchema: PR_DESCRIPTION_SCHEMA,
+      },
+    }),
+    { onStatusUpdate }
+  );
+
+  const candidate = response.data?.candidates?.[0];
+  const rawText = candidate?.content?.parts?.map((p) => p.text).join('') || '';
+
+  if (!rawText.trim()) {
+    throw new ApiError(502, 'Gemini returned no PR description output.');
+  }
+
+  try {
+    const parsed = JSON.parse(stripCodeFences(rawText));
+    return {
+      title: String(parsed.title || '').trim(),
+      description: String(parsed.description || '').trim(),
+    };
+  } catch (err) {
+    throw new ApiError(502, 'Gemini returned a PR description that could not be parsed as JSON.');
+  }
+};
+
 module.exports = {
   analyzeCode,
   generateFixedFile,
@@ -611,6 +723,7 @@ module.exports = {
   chatWithContext,
   generateTests,
   generateArchitectureGraph,
+  generatePullRequestDetails,
   callGeminiWithRetryAndFallback,
   isTransientGeminiError,
   sanitizeErrorMessage,

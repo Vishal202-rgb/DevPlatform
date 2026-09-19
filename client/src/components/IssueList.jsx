@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { severityConfig } from './SeveritySummary';
 import { applyIssueFix, generateIssueTests, applyIssueTests } from '../services/analysisService';
+import CreatePrModal from './CreatePrModal';
 
 const categoryLabels = {
   bug: 'Bug',
@@ -22,6 +23,9 @@ function IssueRow({ issue, analysisId, readOnly }) {
   const [isApplyingTests, setIsApplyingTests] = useState(false);
   const [testApplyError, setTestApplyError] = useState('');
   const [testApplySuccess, setTestApplySuccess] = useState('');
+
+  const [isPrModalOpen, setIsPrModalOpen] = useState(false);
+  const [prModalBranchType, setPrModalBranchType] = useState('fix');
 
   const cfg = severityConfig[issueState.severity] || severityConfig.low;
   const effectiveAnalysisId = issueState.analysisId || analysisId;
@@ -66,7 +70,13 @@ function IssueRow({ issue, analysisId, readOnly }) {
     setTestApplySuccess('');
     try {
       const result = await applyIssueTests(effectiveAnalysisId, issueState._id, generatedTestContent);
-      setTestApplySuccess(`Tests applied to branch ${result.branch}. View PR: ${result.compareUrl}`);
+      setIssueState((prev) => ({
+        ...prev,
+        ...result.issue,
+        testBranch: result.branch,
+        testCompareUrl: result.compareUrl,
+      }));
+      setTestApplySuccess(`Tests applied to branch "${result.branch}".`);
     } catch (err) {
       setTestApplyError(err.message || 'Failed to apply tests.');
     } finally {
@@ -119,6 +129,18 @@ function IssueRow({ issue, analysisId, readOnly }) {
                 Fix applied
               </span>
             )}
+
+            {issueState.prUrl && (
+              <a
+                href={issueState.prUrl}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="rounded-full bg-purple-500/20 border border-purple-500/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-purple-300 hover:underline"
+              >
+                PR #{issueState.prNumber} Open ↗
+              </a>
+            )}
           </div>
 
           <p className="mt-1.5 text-sm text-mist-100">
@@ -162,14 +184,39 @@ function IssueRow({ issue, analysisId, readOnly }) {
 
           <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-graphite-800 pt-3">
             {issueState.fixStatus === 'applied' && issueState.fixCompareUrl ? (
-              <a
-                href={issueState.fixCompareUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="rounded-lg bg-emerald-400/10 px-3 py-1.5 text-xs font-semibold text-emerald-400 transition-colors hover:bg-emerald-400/20"
-              >
-                View fix branch &amp; open PR →
-              </a>
+              <div className="flex flex-wrap items-center gap-2">
+                <a
+                  href={issueState.fixCompareUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-lg bg-emerald-400/10 px-3 py-1.5 text-xs font-semibold text-emerald-400 transition-colors hover:bg-emerald-400/20"
+                >
+                  View fix branch →
+                </a>
+                {!readOnly && (
+                  issueState.prUrl ? (
+                    <a
+                      href={issueState.prUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded-lg bg-purple-500/10 border border-purple-500/30 px-3 py-1.5 text-xs font-semibold text-purple-300 transition-colors hover:bg-purple-500/20"
+                    >
+                      PR #{issueState.prNumber} Open ↗
+                    </a>
+                  ) : (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPrModalBranchType('fix');
+                        setIsPrModalOpen(true);
+                      }}
+                      className="rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-semibold text-graphite-950 transition-colors hover:bg-amber-500 shadow-sm"
+                    >
+                      Create Pull Request
+                    </button>
+                  )
+                )}
+              </div>
             ) : !readOnly ? (
               <button
                 onClick={handleApplyFix}
@@ -211,7 +258,7 @@ function IssueRow({ issue, analysisId, readOnly }) {
               <pre className="mt-2 overflow-x-auto rounded-lg bg-graphite-950 p-3 font-mono text-xs text-amber-400 max-h-64">
                 {generatedTestContent}
               </pre>
-              <div className="mt-3 flex items-center gap-3">
+              <div className="mt-3 flex flex-wrap items-center gap-3">
                 <button
                   onClick={handleApplyTests}
                   disabled={isApplyingTests}
@@ -219,7 +266,42 @@ function IssueRow({ issue, analysisId, readOnly }) {
                 >
                   {isApplyingTests ? 'Applying Tests…' : 'Apply Tests'}
                 </button>
-                {testApplySuccess && (
+                {issueState.testBranch && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <a
+                      href={issueState.testCompareUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded-lg bg-emerald-400/10 px-3 py-1.5 text-xs font-semibold text-emerald-400 transition-colors hover:bg-emerald-400/20"
+                    >
+                      View test branch →
+                    </a>
+                    {!readOnly && (
+                      issueState.prUrl ? (
+                        <a
+                          href={issueState.prUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="rounded-lg bg-purple-500/10 border border-purple-500/30 px-3 py-1.5 text-xs font-semibold text-purple-300 transition-colors hover:bg-purple-500/20"
+                        >
+                          PR #{issueState.prNumber} Open ↗
+                        </a>
+                      ) : (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPrModalBranchType('test');
+                            setIsPrModalOpen(true);
+                          }}
+                          className="rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-semibold text-graphite-950 transition-colors hover:bg-amber-500 shadow-sm"
+                        >
+                          Create Pull Request
+                        </button>
+                      )
+                    )}
+                  </div>
+                )}
+                {testApplySuccess && !issueState.testBranch && (
                   <span className="text-xs text-emerald-400">{testApplySuccess}</span>
                 )}
                 {testApplyError && (
@@ -230,6 +312,23 @@ function IssueRow({ issue, analysisId, readOnly }) {
           )}
         </div>
       )}
+
+      <CreatePrModal
+        isOpen={isPrModalOpen}
+        onClose={() => setIsPrModalOpen(false)}
+        analysisId={effectiveAnalysisId}
+        issue={issueState}
+        branchType={prModalBranchType}
+        onPrCreated={(pr, updatedIssue) => {
+          setIssueState((prev) => ({
+            ...prev,
+            ...(updatedIssue || {}),
+            prUrl: pr.htmlUrl,
+            prNumber: pr.number,
+            prStatus: 'created',
+          }));
+        }}
+      />
     </div>
   );
 }
