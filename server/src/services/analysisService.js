@@ -21,6 +21,12 @@ const summarize = (issues) => {
   return summary;
 };
 
+const activeAnalysisJobs = new Map(); // repositoryId -> { stage, message, startedAt }
+
+const getAnalysisStatus = (repositoryId) => {
+  return activeAnalysisJobs.get(String(repositoryId)) || null;
+};
+
 const getOwnedRepository = async (userId, repositoryId) => {
   const repository = await Repository.findOne({ _id: repositoryId, user: userId });
   if (!repository) {
@@ -30,80 +36,104 @@ const getOwnedRepository = async (userId, repositoryId) => {
 };
 
 const runAnalysis = async (userId, repositoryId) => {
-  const repository = await getOwnedRepository(userId, repositoryId);
-  const user = await githubService.getUserWithGithubToken(userId);
-
-  let files;
-  let totalFilesInTree;
-  try {
-    const result = await githubService.fetchSourceFiles(
-      user.github.accessToken,
-      repository.githubOwner,
-      repository.name,
-      repository.defaultBranch
-    );
-    files = result.files;
-    totalFilesInTree = result.totalFilesInTree;
-  } catch (error) {
-    const analysis = await Analysis.create({
-      user: userId,
-      repository: repository._id,
-      status: 'failed',
-      filesAnalyzed: 0,
-      error: error.message || 'Failed to fetch repository files from GitHub.',
-    });
-    throw error instanceof ApiError ? error : new ApiError(502, analysis.error);
+  const repoKey = String(repositoryId);
+  if (activeAnalysisJobs.has(repoKey)) {
+    throw new ApiError(409, 'An analysis is already running for this repository. Please wait for it to finish.');
   }
 
-  if (!files.length) {
-    const analysis = await Analysis.create({
-      user: userId,
-      repository: repository._id,
-      status: 'failed',
-      filesAnalyzed: 0,
-      error: `No analyzable source files were found (${totalFilesInTree} files scanned in the repository tree, all excluded by ignore rules or size limits).`,
-    });
-    throw new ApiError(422, analysis.error);
-  }
-
-  let issues;
-  try {
-    issues = await geminiService.analyzeCode(repository.fullName, files);
-  } catch (error) {
-    await Analysis.create({
-      user: userId,
-      repository: repository._id,
-      status: 'failed',
-      filesAnalyzed: files.length,
-      error: error.message || 'Gemini analysis failed.',
-    });
-    throw error;
-  }
-
-  const summary = summarize(issues);
-  const overallScore = computeScore(issues);
-
-  const analysis = await Analysis.create({
-    user: userId,
-    repository: repository._id,
-    status: 'completed',
-    model: env.geminiModel,
-    filesAnalyzed: files.length,
-    overallScore,
-    summary,
-    issues,
+  activeAnalysisJobs.set(repoKey, {
+    stage: 'initializing',
+    message: 'Starting repository analysis...',
+    startedAt: Date.now(),
   });
 
-  repository.lastAnalysis = analysis._id;
-  repository.lastAnalyzedAt = analysis.createdAt;
-  await repository.save();
+  try {
+    const repository = await getOwnedRepository(userId, repositoryId);
+    const user = await githubService.getUserWithGithubToken(userId);
 
-  return analysis;
+    activeAnalysisJobs.set(repoKey, {
+      stage: 'fetching',
+      message: 'Fetching source files from GitHub...',
+      startedAt: Date.now(),
+    });
+
+    let files;
+    let totalFilesInTree;
+    try {
+      const result = await githubService.fetchSourceFiles(
+        user.github.accessToken,
+        repository.githubOwner,
+        repository.name,
+        repository.defaultBranch
+      );
+      files = result.files;
+      totalFilesInTree = result.totalFilesInTree;
+    } catch (error) {
+      throw error instanceof ApiError ? error : new ApiError(502, error.message || 'Failed to fetch repository files from GitHub.');
+    }
+
+    if (!files.length) {
+      throw new ApiError(
+        422,
+        `No analyzable source files were found (${totalFilesInTree} files scanned in the repository tree, all excluded by ignore rules or size limits).`
+      );
+    }
+
+    activeAnalysisJobs.set(repoKey, {
+      stage: 'analyzing',
+      message: 'Running Gemini analysis...',
+      startedAt: Date.now(),
+    });
+
+    const onStatusUpdate = (msg) => {
+      activeAnalysisJobs.set(repoKey, {
+        stage: msg.includes('fallback') ? 'fallback' : 'retrying',
+        message: msg,
+        startedAt: Date.now(),
+      });
+    };
+
+    let issues;
+    let modelUsed = env.geminiModel;
+    try {
+      const result = await geminiService.analyzeCode(repository.fullName, files, onStatusUpdate);
+      issues = result.issues;
+      modelUsed = result.modelUsed || env.geminiModel;
+    } catch (error) {
+      throw error;
+    }
+
+    const summary = summarize(issues);
+    const overallScore = computeScore(issues);
+
+    const analysis = await Analysis.create({
+      user: userId,
+      repository: repository._id,
+      status: 'completed',
+      model: modelUsed,
+      filesAnalyzed: files.length,
+      overallScore,
+      summary,
+      issues,
+    });
+
+    repository.lastAnalysis = analysis._id;
+    repository.lastAnalyzedAt = analysis.createdAt;
+    await repository.save();
+
+    return analysis;
+  } finally {
+    activeAnalysisJobs.delete(repoKey);
+  }
 };
 
 const getLatestAnalysis = async (userId, repositoryId) => {
   await getOwnedRepository(userId, repositoryId);
-  const analysis = await Analysis.findOne({ repository: repositoryId, user: userId }).sort({
+  const analysis = await Analysis.findOne({
+    repository: repositoryId,
+    user: userId,
+    status: 'completed',
+  }).sort({
     createdAt: -1,
   });
   if (!analysis) {
@@ -114,7 +144,7 @@ const getLatestAnalysis = async (userId, repositoryId) => {
 
 const getAnalysisHistory = async (userId, repositoryId, limit = 20) => {
   await getOwnedRepository(userId, repositoryId);
-  return Analysis.find({ repository: repositoryId, user: userId })
+  return Analysis.find({ repository: repositoryId, user: userId, status: 'completed' })
     .sort({ createdAt: -1 })
     .limit(limit)
     .select('-issues');
@@ -391,4 +421,6 @@ module.exports = {
   getSharedAnalysis,
   computeScore,
   summarize,
+  getAnalysisStatus,
+  activeAnalysisJobs,
 };

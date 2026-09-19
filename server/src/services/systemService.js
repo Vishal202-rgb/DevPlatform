@@ -4,10 +4,9 @@ const env = require('../config/env');
 // Models Google has deprecated/restricted for new users - warn instead of
 // silently letting Gemini calls fail with a confusing 400 later.
 const KNOWN_DEPRECATED_GEMINI_MODELS = [
-  'gemini-2.5-flash',
-  'gemini-2.5-pro',
-  'gemini-1.5-flash',
-  'gemini-1.5-pro',
+  'gemini-1.0-pro',
+  'gemini-pro',
+  'gemini-1.0-pro-vision',
 ];
 
 const PLACEHOLDER_JWT_SECRETS = ['replace_with_a_long_random_secret', 'your_jwt_secret', 'secret'];
@@ -170,7 +169,7 @@ const runHealthChecks = (req) => {
     }
   }
 
-  // --- Deprecated Gemini model ---
+  // --- Gemini models (primary & fallback) ---
   if (env.geminiModel) {
     if (KNOWN_DEPRECATED_GEMINI_MODELS.includes(env.geminiModel)) {
       checks.push(
@@ -185,6 +184,12 @@ const runHealthChecks = (req) => {
     } else {
       checks.push(check('gemini_model', 'GEMINI_MODEL', 'ok', `Using "${env.geminiModel}"`));
     }
+  }
+
+  if (env.geminiFallbackModel) {
+    checks.push(
+      check('gemini_fallback_model', 'GEMINI_FALLBACK_MODEL', 'ok', `Configured fallback: "${env.geminiFallbackModel}"`)
+    );
   }
 
   // --- NODE_ENV vs the platform's own reported environment (Vercel sets VERCEL_ENV automatically) ---

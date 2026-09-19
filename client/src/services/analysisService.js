@@ -60,6 +60,11 @@ export const runAnalysis = async (repositoryId) => {
   return data.data.analysis;
 };
 
+export const fetchAnalysisStatus = async (repositoryId) => {
+  const { data } = await api.get(`/analysis/${repositoryId}/status`);
+  return data.data;
+};
+
 export const fetchLatestAnalysis = async (repositoryId) => {
   const { data } = await api.get(`/analysis/${repositoryId}/latest`);
   return data.data.analysis;

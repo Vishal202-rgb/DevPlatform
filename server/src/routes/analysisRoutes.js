@@ -1,6 +1,7 @@
 const express = require('express');
 const {
   runAnalysis,
+  getAnalysisStatus,
   getLatestAnalysis,
   getAnalysisHistory,
   getAnalysisById,
@@ -30,6 +31,7 @@ router.delete('/result/:analysisId/share', unshareAnalysis);
 
 // Per-repository routes
 router.post('/:repositoryId/run', runAnalysis);
+router.get('/:repositoryId/status', getAnalysisStatus);
 router.get('/:repositoryId/latest', getLatestAnalysis);
 router.get('/:repositoryId/history', getAnalysisHistory);
 

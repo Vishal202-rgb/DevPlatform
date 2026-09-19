@@ -6,6 +6,7 @@ import IssueList from '../components/IssueList';
 import {
   runAnalysis,
   fetchLatestAnalysis,
+  fetchAnalysisStatus,
   shareAnalysis,
   unshareAnalysis,
 } from '../services/analysisService';
@@ -18,6 +19,10 @@ export default function AnalysisResult() {
   const [analysis, setAnalysis] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRunning, setIsRunning] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('Running Gemini analysis…');
+  const [statusSubtext, setStatusSubtext] = useState(
+    'Fetching source files from GitHub and reviewing them for bugs, security issues, code smells, and performance problems. This can take a moment on larger repositories.'
+  );
   const [error, setError] = useState('');
   const [notFound, setNotFound] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
@@ -44,19 +49,55 @@ export default function AnalysisResult() {
   }, [repositoryId]);
 
   const handleRun = useCallback(async () => {
+    if (isRunning) return;
     setIsRunning(true);
     setError('');
+    setStatusMessage('Running Gemini analysis…');
+    setStatusSubtext(
+      'Fetching source files from GitHub and reviewing them for bugs, security issues, code smells, and performance problems. This can take a moment on larger repositories.'
+    );
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const statusData = await fetchAnalysisStatus(repositoryId);
+        if (statusData?.message) {
+          setStatusMessage(statusData.message);
+          if (statusData.stage === 'retrying') {
+            setStatusSubtext('The AI model is experiencing high demand. Backing off and retrying automatically…');
+          } else if (statusData.stage === 'fallback') {
+            setStatusSubtext('Switching to the configured fallback model to complete the code review…');
+          }
+        }
+      } catch (_err) {
+        // Ignore polling errors during active execution
+      }
+    }, 1000);
+
     try {
       const data = await runAnalysis(repositoryId);
       setAnalysis(data);
       setNotFound(false);
+      setError('');
     } catch (err) {
-      setError(err.message || 'Analysis failed. Please try again.');
+      const serverMessage = err.response?.data?.message || err.message;
+      if (
+        serverMessage?.includes('high demand') ||
+        serverMessage?.includes('temporarily') ||
+        serverMessage?.includes('unavailable') ||
+        serverMessage?.includes('rate limit') ||
+        err.response?.status === 503 ||
+        err.response?.status === 429
+      ) {
+        setError('AI analysis is temporarily unavailable. Please try again in a few moments.');
+      } else {
+        setError(serverMessage || 'AI analysis is temporarily unavailable. Please try again in a few moments.');
+      }
     } finally {
+      clearInterval(pollInterval);
       setIsRunning(false);
       setIsLoading(false);
     }
-  }, [repositoryId]);
+  }, [repositoryId, isRunning]);
 
   useEffect(() => {
     if (autorun) {
@@ -133,19 +174,26 @@ export default function AnalysisResult() {
       </div>
 
       {error && (
-        <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
-          {error}
+        <div className="mb-4 flex flex-col gap-3 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-red-400" />
+            <p className="font-medium">{error}</p>
+          </div>
+          <button
+            onClick={handleRun}
+            disabled={isRunning}
+            className="self-start rounded-lg bg-amber-400 px-4 py-1.5 text-xs font-semibold text-graphite-950 transition-colors hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-60 sm:self-auto"
+          >
+            Try Again
+          </button>
         </div>
       )}
 
       {isRunning ? (
         <div className="rounded-xl border border-dashed border-graphite-700 bg-graphite-900/60 p-10 text-center">
           <span className="mb-3 inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-amber-400" />
-          <p className="font-mono text-sm text-amber-400">Running Gemini analysis…</p>
-          <p className="mx-auto mt-2 max-w-md text-sm text-mist-500">
-            Fetching source files from GitHub and reviewing them for bugs, security issues, code
-            smells, and performance problems. This can take a moment on larger repositories.
-          </p>
+          <p className="font-mono text-sm text-amber-400">{statusMessage}</p>
+          <p className="mx-auto mt-2 max-w-md text-sm text-mist-500">{statusSubtext}</p>
         </div>
       ) : isLoading ? (
         <p className="font-mono text-sm text-mist-500">Loading…</p>
@@ -158,7 +206,8 @@ export default function AnalysisResult() {
           </p>
           <button
             onClick={handleRun}
-            className="mt-5 rounded-lg bg-amber-400 px-4 py-2 text-sm font-semibold text-graphite-950 transition-colors hover:bg-amber-500"
+            disabled={isRunning}
+            className="mt-5 rounded-lg bg-amber-400 px-4 py-2 text-sm font-semibold text-graphite-950 transition-colors hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Run analysis
           </button>
@@ -179,7 +228,8 @@ export default function AnalysisResult() {
                 </div>
                 <button
                   onClick={handleRun}
-                  className="rounded-lg border border-graphite-600 px-4 py-2 text-sm text-mist-100 transition-colors hover:border-amber-400/50 hover:text-amber-400"
+                  disabled={isRunning}
+                  className="rounded-lg border border-graphite-600 px-4 py-2 text-sm text-mist-100 transition-colors hover:border-amber-400/50 hover:text-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   Re-run analysis
                 </button>

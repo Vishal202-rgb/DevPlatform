@@ -51,11 +51,19 @@ const errorHandler = (err, req, res, _next) => {
     }
   }
 
+  const sanitize = (val) => {
+    if (typeof val === 'string') {
+      return val
+        .replace(/key=[a-zA-Z0-9_\-]+/gi, 'key=[REDACTED]')
+        .replace(/AIza[a-zA-Z0-9_\-]{35}/g, '[REDACTED_API_KEY]');
+    }
+    return val;
+  };
+
   res.status(statusCode).json({
     success: false,
-    message,
-    ...(details ? { details } : {}),
-    ...(process.env.NODE_ENV === 'development' ? { stack: err.stack } : {}),
+    message: sanitize(message),
+    ...(details ? { details: Array.isArray(details) ? details.map(sanitize) : sanitize(details) } : {}),
   });
 };
 

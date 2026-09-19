@@ -53,6 +53,7 @@ export default function Repositories() {
   };
 
   const handleAnalyze = async (repo) => {
+    if (analyzingId) return;
     setError('');
     setAnalyzingId(repo.githubId);
     try {

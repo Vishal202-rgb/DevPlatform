@@ -18,6 +18,19 @@ const runAnalysis = asyncHandler(async (req, res) => {
   });
 });
 
+const getAnalysisStatus = asyncHandler(async (req, res) => {
+  const { repositoryId } = req.params;
+  const status = analysisService.getAnalysisStatus(repositoryId);
+  res.status(200).json({
+    success: true,
+    data: {
+      isRunning: Boolean(status),
+      stage: status?.stage || 'idle',
+      message: status?.message || null,
+    },
+  });
+});
+
 const getLatestAnalysis = asyncHandler(async (req, res) => {
   const analysis = await analysisService.getLatestAnalysis(req.user.id, req.params.repositoryId);
   res.status(200).json({ success: true, data: { analysis } });
@@ -112,6 +125,7 @@ const getSharedAnalysis = asyncHandler(async (req, res) => {
 
 module.exports = {
   runAnalysis,
+  getAnalysisStatus,
   getLatestAnalysis,
   getAnalysisHistory,
   getAnalysisById,
