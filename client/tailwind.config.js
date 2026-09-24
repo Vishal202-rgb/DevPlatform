@@ -4,28 +4,31 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Light grey/white surface scale (was a dark near-black scale).
+        // Linear / Vercel inspired dark obsidian scale
         graphite: {
-          950: '#FFFFFF', // page background
-          900: '#F7F7F8', // card/panel background
-          800: '#EFEFF1', // secondary surface / hover / input background
-          700: '#E2E2E6', // borders
-          600: '#C7C7CE', // stronger borders / input focus baseline
-          500: '#8B8B95', // muted icons / secondary borders
+          950: '#090B10', // page background
+          900: '#10131C', // card/panel background
+          850: '#161A26', // elevated modal / popover
+          800: '#1D2232', // input background / secondary surface
+          700: '#2A3249', // subtle borders
+          600: '#3C4665', // stronger borders / focus baseline
+          500: '#5F6D8F', // muted icons / tertiary text
         },
-        // Monochrome accent (was amber) - near-black, used for buttons,
-        // links, and focus rings so the whole UI stays grey/white.
+        // Premium amber accent for buttons, badges, highlights
         amber: {
-          400: '#27272A', // accent - dark charcoal
-          500: '#000000', // accent hover - true black
-          600: '#000000',
+          300: '#FCD34D',
+          400: '#F59E0B', // primary accent
+          500: '#D97706', // hover accent
+          600: '#B45309', // active
         },
-        // Text scale (was light text for a dark theme, now dark text for a
-        // light theme).
+        // Crisp high-contrast text scale
         mist: {
-          100: '#0B0B0D', // primary text - near-black
-          300: '#52525B', // secondary text
-          500: '#84848C', // muted / placeholder text
+          100: '#F8FAFC', // primary heading / strong text
+          200: '#E2E8F0', // secondary headings / inputs
+          300: '#CBD5E1', // body copy
+          400: '#94A3B8', // supporting descriptions
+          500: '#64748B', // muted metadata & hints
+          600: '#475569', // placeholder text
         },
       },
       fontFamily: {
@@ -33,7 +36,34 @@ export default {
         mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
       },
       boxShadow: {
-        panel: '0 1px 2px 0 rgba(0,0,0,0.04), 0 8px 24px -12px rgba(0,0,0,0.12)',
+        panel: '0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 12px 28px -12px rgba(0, 0, 0, 0.6)',
+        'panel-hover': '0 4px 20px -2px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(245, 158, 11, 0.15)',
+        glow: '0 0 25px -5px rgba(245, 158, 11, 0.25)',
+        'glow-sm': '0 0 12px -2px rgba(245, 158, 11, 0.2)',
+      },
+      animation: {
+        'fade-in': 'fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+        'scale-in': 'scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+        'slide-up': 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+        shimmer: 'shimmer 2s infinite linear',
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        scaleIn: {
+          '0%': { opacity: '0', transform: 'scale(0.96)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        slideUp: {
+          '0%': { opacity: '0', transform: 'translateY(8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        shimmer: {
+          '0%': { backgroundPosition: '-200% 0' },
+          '100%': { backgroundPosition: '200% 0' },
+        },
       },
     },
   },

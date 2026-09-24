@@ -21,10 +21,21 @@ const summarize = (issues) => {
   return summary;
 };
 
+const STALE_JOB_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes maximum lifetime for an active analysis lock
 const activeAnalysisJobs = new Map(); // repositoryId -> { stage, message, startedAt }
 
 const getAnalysisStatus = (repositoryId) => {
-  return activeAnalysisJobs.get(String(repositoryId)) || null;
+  const repoKey = String(repositoryId);
+  const job = activeAnalysisJobs.get(repoKey);
+  if (!job) return null;
+
+  // Stale lock recovery on status check
+  if (Date.now() - job.startedAt > STALE_JOB_TIMEOUT_MS) {
+    activeAnalysisJobs.delete(repoKey);
+    return null;
+  }
+
+  return job;
 };
 
 const getOwnedRepository = async (userId, repositoryId) => {
@@ -37,8 +48,28 @@ const getOwnedRepository = async (userId, repositoryId) => {
 
 const runAnalysis = async (userId, repositoryId) => {
   const repoKey = String(repositoryId);
-  if (activeAnalysisJobs.has(repoKey)) {
-    throw new ApiError(409, 'An analysis is already running for this repository. Please wait for it to finish.');
+  const existingJob = activeAnalysisJobs.get(repoKey);
+
+  // Concurrency guard with stale timeout recovery
+  if (existingJob) {
+    const isStale = Date.now() - existingJob.startedAt > STALE_JOB_TIMEOUT_MS;
+    if (isStale) {
+      activeAnalysisJobs.delete(repoKey);
+    } else {
+      throw new ApiError(409, 'An analysis is already running for this repository. Please wait for it to finish.');
+    }
+  }
+
+  // Recover any stale running records in MongoDB for this repository
+  try {
+    if (typeof Analysis.updateMany === 'function') {
+      await Analysis.updateMany(
+        { repository: repositoryId, status: 'running' },
+        { status: 'failed', error: 'Previous analysis timed out or was interrupted.' }
+      );
+    }
+  } catch (_e) {
+    // Non-fatal
   }
 
   activeAnalysisJobs.set(repoKey, {
@@ -47,9 +78,22 @@ const runAnalysis = async (userId, repositoryId) => {
     startedAt: Date.now(),
   });
 
+  let analysisRecord = null;
   try {
     const repository = await getOwnedRepository(userId, repositoryId);
     const user = await githubService.getUserWithGithubToken(userId);
+
+    // START: Create initial RUNNING record in MongoDB
+    try {
+      analysisRecord = await Analysis.create({
+        user: userId,
+        repository: repository._id,
+        status: 'running',
+        model: env.geminiModel,
+      });
+    } catch (_dbErr) {
+      // Non-fatal if initial creation fails, analysis continues
+    }
 
     activeAnalysisJobs.set(repoKey, {
       stage: 'fetching',
@@ -106,23 +150,48 @@ const runAnalysis = async (userId, repositoryId) => {
     const summary = summarize(issues);
     const overallScore = computeScore(issues);
 
-    const analysis = await Analysis.create({
-      user: userId,
-      repository: repository._id,
-      status: 'completed',
-      model: modelUsed,
-      filesAnalyzed: files.length,
-      overallScore,
-      summary,
-      issues,
-    });
+    // SUCCESS: Mark COMPLETED
+    if (analysisRecord) {
+      analysisRecord.status = 'completed';
+      analysisRecord.model = modelUsed;
+      analysisRecord.filesAnalyzed = files.length;
+      analysisRecord.overallScore = overallScore;
+      analysisRecord.summary = summary;
+      analysisRecord.issues = issues;
+      analysisRecord.error = null;
+      await analysisRecord.save();
+    } else {
+      analysisRecord = await Analysis.create({
+        user: userId,
+        repository: repository._id,
+        status: 'completed',
+        model: modelUsed,
+        filesAnalyzed: files.length,
+        overallScore,
+        summary,
+        issues,
+      });
+    }
 
-    repository.lastAnalysis = analysis._id;
-    repository.lastAnalyzedAt = analysis.createdAt;
+    repository.lastAnalysis = analysisRecord._id;
+    repository.lastAnalyzedAt = analysisRecord.createdAt;
     await repository.save();
 
-    return analysis;
+    return analysisRecord;
+  } catch (error) {
+    // FAILURE / TIMEOUT / EXCEPTION: Mark FAILED and record error
+    if (analysisRecord) {
+      try {
+        analysisRecord.status = 'failed';
+        analysisRecord.error = error.message || 'Analysis failed.';
+        await analysisRecord.save();
+      } catch (_e) {
+        // Non-fatal
+      }
+    }
+    throw error;
   } finally {
+    // ALWAYS clear running lock
     activeAnalysisJobs.delete(repoKey);
   }
 };
@@ -132,7 +201,6 @@ const getLatestAnalysis = async (userId, repositoryId) => {
   const analysis = await Analysis.findOne({
     repository: repositoryId,
     user: userId,
-    status: 'completed',
   }).sort({
     createdAt: -1,
   });
@@ -144,7 +212,7 @@ const getLatestAnalysis = async (userId, repositoryId) => {
 
 const getAnalysisHistory = async (userId, repositoryId, limit = 20) => {
   await getOwnedRepository(userId, repositoryId);
-  return Analysis.find({ repository: repositoryId, user: userId, status: 'completed' })
+  return Analysis.find({ repository: repositoryId, user: userId })
     .sort({ createdAt: -1 })
     .limit(limit)
     .select('-issues');

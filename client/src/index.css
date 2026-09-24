@@ -9,15 +9,57 @@ html, body, #root {
 }
 
 body {
-  @apply bg-graphite-950 text-mist-100 font-sans antialiased;
+  @apply bg-graphite-950 text-mist-100 font-sans antialiased selection:bg-amber-400/20 selection:text-amber-300;
+  color-scheme: dark;
 }
 
-::selection {
-  @apply bg-amber-500/30 text-mist-100;
+/* Custom sleek scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
 
-/* Visible keyboard focus ring, accessible by default */
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2A3249;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3C4665;
+}
+
+/* Accessible focus ring */
 :focus-visible {
-  outline: 2px solid theme('colors.amber.400');
+  outline: 2px solid #F59E0B;
   outline-offset: 2px;
 }
+
+/* Skeleton shimmer utility */
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(29, 34, 50, 0.6) 0%,
+    rgba(42, 50, 73, 0.8) 50%,
+    rgba(29, 34, 50, 0.6) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s infinite linear;
+}
+
+/* Linear-style subtle card border glow */
+.card-subtle {
+  background: #10131C;
+  border: 1px solid #2A3249;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 10px 24px -10px rgba(0, 0, 0, 0.5);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card-subtle:hover {
+  border-color: #3C4665;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(245, 158, 11, 0.12);
+}
+

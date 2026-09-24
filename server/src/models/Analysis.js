@@ -206,7 +206,7 @@ const analysisSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['completed', 'failed'],
+      enum: ['completed', 'failed', 'running'],
       required: true,
     },
     model: {

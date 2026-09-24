@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { generateIssuePr, createIssuePr } from '../services/analysisService';
+import MarkdownRenderer from './MarkdownRenderer';
 
 export default function CreatePrModal({
   isOpen,
@@ -11,10 +12,11 @@ export default function CreatePrModal({
 }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [baseBranch, setBaseBranch] = useState('');
+  const [baseBranch, setBaseBranch] = useState('main');
   const [headBranch, setHeadBranch] = useState('');
   const [filesChanged, setFilesChanged] = useState([]);
-  
+  const [previewTab, setPreviewTab] = useState('edit'); // 'edit' | 'preview'
+
   const [isGenerating, setIsGenerating] = useState(false);
   const [generateError, setGenerateError] = useState('');
   const [isFallbackNotice, setIsFallbackNotice] = useState(false);
@@ -52,18 +54,21 @@ export default function CreatePrModal({
     } catch (err) {
       const msg = err.response?.data?.message || err.message || 'Failed to generate PR details.';
       setGenerateError(msg);
-      // Pre-fill editable fallback so user can still manually create PR if diff exists
+      // Pre-fill editable fallback
       if (!title) {
         setTitle(
           branchType === 'test'
-            ? `Test: Add tests for ${issue.file || 'component'}`
-            : `Fix: ${issue.description ? issue.description.slice(0, 60) : 'issue'}`
+            ? `test: add automated unit tests for ${issue.file || 'module'}`
+            : `fix: resolve ${issue.category || 'issue'} in ${issue.file || 'module'}`
         );
       }
       if (!description) {
         setDescription(
-          `## Summary\nApply changes for ${issue.file || 'repository'}.\n\n## Changes\n- Updated affected files.\n\n## Why\n${issue.description || 'Address identified issue.'}\n\n## Testing\n- Automated validation.\n\n## Files Changed\n- \`${issue.file || 'affected file'}\``
+          `## Summary\nAutomated fix proposed by DevPlatform AI for ${issue.file || 'repository'}.\n\n## Changes\n- Applied remediation for identified ${issue.category || 'issue'}.\n\n## Why\n${issue.description || 'Address code review finding.'}\n\n## Testing\n- Validated regression test pass.`
         );
+      }
+      if (targetBranch) {
+        setHeadBranch(targetBranch);
       }
     } finally {
       setIsGenerating(false);
@@ -73,6 +78,7 @@ export default function CreatePrModal({
   useEffect(() => {
     if (isOpen && issue) {
       setCreatedPr(null);
+      setPreviewTab('edit');
       loadPrDraft();
     } else {
       setTitle('');
@@ -85,16 +91,27 @@ export default function CreatePrModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, issue?._id, branchType]);
 
+  // ESC key listener
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && isOpen && !isSubmitting) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, isSubmitting, onClose]);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!title.trim()) {
-      setSubmitError('Please enter a PR title.');
+      setSubmitError('Please provide a title for the pull request.');
       return;
     }
     if (!headBranch) {
-      setSubmitError('Branch name is missing.');
+      setSubmitError('Head branch name is missing.');
       return;
     }
 
@@ -123,57 +140,65 @@ export default function CreatePrModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-graphite-950/80 p-4 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-2xl rounded-xl border border-graphite-700 bg-graphite-900 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-        {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-graphite-700 px-6 py-4 bg-graphite-900">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-graphite-950/80 p-4 backdrop-blur-md animate-fade-in">
+      <div className="w-full max-w-2xl rounded-2xl border border-graphite-700 bg-graphite-900 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-graphite-700/80 px-6 py-4 bg-graphite-850">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-400/10 text-amber-400 font-mono text-sm font-bold">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-400 font-mono text-sm font-bold">
               PR
             </div>
             <div>
-              <h2 className="text-base font-semibold text-mist-100">
-                {branchType === 'test' ? 'Create Pull Request for Tests' : 'Create Pull Request for Fix'}
+              <h2 className="text-sm sm:text-base font-semibold text-mist-100">
+                {branchType === 'test' ? 'Create Test Pull Request' : 'Create Fix Pull Request'}
               </h2>
-              <p className="text-xs text-mist-400 font-mono">
-                {baseBranch || 'base'} &larr; <span className="text-amber-400">{headBranch || targetBranch}</span>
-              </p>
+              <div className="flex items-center gap-1.5 text-xs text-mist-400 font-mono mt-0.5">
+                <span className="text-mist-300 font-semibold">{baseBranch || 'main'}</span>
+                <span>←</span>
+                <span className="rounded bg-graphite-800 px-1.5 py-0.2 text-amber-400 border border-graphite-700">
+                  {headBranch || targetBranch || 'fix-branch'}
+                </span>
+              </div>
             </div>
           </div>
+
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-mist-400 transition-colors hover:bg-graphite-800 hover:text-mist-100"
-            aria-label="Close"
+            className="rounded-lg p-1.5 text-mist-400 hover:bg-graphite-800 hover:text-mist-100 transition-colors"
+            aria-label="Close modal"
           >
             ✕
           </button>
         </div>
 
-        {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
           {createdPr ? (
-            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-5 text-center space-y-3">
-              <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400 text-2xl">
+            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-6 text-center space-y-4 animate-scale-in">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-400 text-3xl shadow-sm">
                 ✓
               </div>
-              <h3 className="text-lg font-semibold text-mist-100">
-                Pull Request #{createdPr.number} Created!
-              </h3>
-              <p className="text-sm text-mist-300">
-                Your pull request has been opened on GitHub and linked to this issue.
-              </p>
-              <div className="pt-2 flex justify-center gap-3">
+              <div>
+                <h3 className="text-base sm:text-lg font-semibold text-mist-100">
+                  Pull Request #{createdPr.number} Opened!
+                </h3>
+                <p className="mt-1 text-xs sm:text-sm text-mist-300 max-w-md mx-auto">
+                  Your changes have been pushed to GitHub with linked review context and descriptions.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
                 <a
                   href={createdPr.htmlUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-semibold text-graphite-950 transition-colors hover:bg-emerald-500"
+                  className="rounded-lg bg-emerald-400 px-4 py-2 text-xs font-semibold text-graphite-950 transition-colors hover:bg-emerald-500 shadow-sm"
                 >
                   View on GitHub ↗
                 </a>
                 <button
                   onClick={onClose}
-                  className="rounded-lg border border-graphite-600 px-4 py-2 text-sm text-mist-200 transition-colors hover:bg-graphite-800"
+                  className="rounded-lg border border-graphite-600 bg-graphite-800 px-4 py-2 text-xs font-medium text-mist-200 hover:bg-graphite-700"
                 >
                   Done
                 </button>
@@ -181,101 +206,132 @@ export default function CreatePrModal({
             </div>
           ) : (
             <>
-              {/* Diff summary pills */}
+              {/* Files changed diff pills */}
               {filesChanged.length > 0 && (
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-xs text-mist-500 font-medium mr-1">Diff changes:</span>
-                  {filesChanged.map((file) => (
-                    <span
-                      key={file.filename}
-                      className="rounded bg-graphite-800 border border-graphite-700 px-2 py-0.5 font-mono text-[11px] text-mist-300"
-                    >
-                      {file.filename}
-                      {file.additions !== undefined && (
-                        <span className="ml-1 text-emerald-400">+{file.additions}</span>
-                      )}
-                      {file.deletions !== undefined && (
-                        <span className="ml-0.5 text-red-400">-{file.deletions}</span>
-                      )}
-                    </span>
-                  ))}
+                <div className="rounded-xl border border-graphite-800 bg-graphite-950/70 p-3 space-y-1.5">
+                  <span className="text-[11px] font-mono uppercase tracking-wider text-mist-500 block">
+                    Changed Files ({filesChanged.length})
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {filesChanged.map((file) => (
+                      <span
+                        key={file.filename}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-graphite-700 bg-graphite-850 px-2 py-1 font-mono text-[11px] text-mist-300"
+                      >
+                        <span className="truncate max-w-[200px]">{file.filename}</span>
+                        {file.additions !== undefined && (
+                          <span className="text-emerald-400 font-semibold">+{file.additions}</span>
+                        )}
+                        {file.deletions !== undefined && (
+                          <span className="text-red-400 font-semibold">-{file.deletions}</span>
+                        )}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               )}
 
-              {/* Gemini Fallback Alert */}
+              {/* Fallback Notice */}
               {isFallbackNotice && (
-                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-xs text-amber-300">
-                  <span className="font-semibold">Notice:</span> Gemini model was temporarily busy. Pre-populated a structured PR template from repository changes so you can review, edit, and proceed without delay.
+                <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-300">
+                  <span className="font-semibold">Notice:</span> Pre-populated structured PR template from repository AST changes. You can customize the fields before creating the pull request.
                 </div>
               )}
 
-              {/* Generation Error */}
+              {/* Errors */}
               {generateError && (
-                <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3.5 py-2.5 text-xs text-red-300">
-                  <span className="font-semibold">Error:</span> {generateError}
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300">
+                  <span className="font-semibold">Generation Notice:</span> {generateError}
                 </div>
               )}
 
-              {/* Submission Error */}
               {submitError && (
-                <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3.5 py-2.5 text-xs text-red-300">
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300 font-mono">
                   <span className="font-semibold">GitHub Error:</span> {submitError}
                 </div>
               )}
 
+              {/* PR Form */}
               <form id="create-pr-form" onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label htmlFor="pr-title" className="block text-xs font-semibold uppercase tracking-wide text-mist-400">
-                      PR Title
-                    </label>
-                    <span className="text-[11px] text-mist-500">Concise &amp; descriptive</span>
-                  </div>
+                  <label htmlFor="pr-title" className="block text-xs font-mono font-semibold uppercase tracking-wider text-mist-400 mb-1.5">
+                    Pull Request Title
+                  </label>
                   <input
                     id="pr-title"
                     type="text"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     disabled={isGenerating || isSubmitting}
-                    placeholder="e.g. Fix: Resolve SQL injection vulnerability in auth query"
-                    className="w-full rounded-lg border border-graphite-700 bg-graphite-950 px-3 py-2 text-sm text-mist-100 placeholder-mist-600 focus:border-amber-400 focus:outline-none disabled:opacity-50"
+                    placeholder="e.g. fix: resolve SQL parameter injection vulnerability"
+                    className="w-full rounded-xl border border-graphite-700 bg-graphite-950 px-3.5 py-2.5 text-xs sm:text-sm text-mist-100 outline-none transition-colors placeholder:text-mist-600 focus:border-amber-400 disabled:opacity-50"
                   />
                 </div>
 
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label htmlFor="pr-description" className="block text-xs font-semibold uppercase tracking-wide text-mist-400">
-                      PR Description (Markdown)
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label htmlFor="pr-desc" className="block text-xs font-mono font-semibold uppercase tracking-wider text-mist-400">
+                      Description (Markdown)
                     </label>
-                    <span className="text-[11px] text-mist-500">Structured: Summary, Changes, Why, Testing, Files</span>
+
+                    {/* Edit vs Preview Toggle */}
+                    <div className="flex items-center gap-1 rounded-md border border-graphite-700 bg-graphite-800 p-0.5 text-[11px] font-mono">
+                      <button
+                        type="button"
+                        onClick={() => setPreviewTab('edit')}
+                        className={`rounded px-2 py-0.5 transition-colors ${
+                          previewTab === 'edit'
+                            ? 'bg-amber-400 text-graphite-950 font-bold'
+                            : 'text-mist-400 hover:text-mist-200'
+                        }`}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPreviewTab('preview')}
+                        className={`rounded px-2 py-0.5 transition-colors ${
+                          previewTab === 'preview'
+                            ? 'bg-amber-400 text-graphite-950 font-bold'
+                            : 'text-mist-400 hover:text-mist-200'
+                        }`}
+                      >
+                        Preview
+                      </button>
+                    </div>
                   </div>
-                  <textarea
-                    id="pr-description"
-                    rows={12}
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    disabled={isGenerating || isSubmitting}
-                    placeholder="## Summary&#10;...&#10;&#10;## Changes&#10;- ...&#10;&#10;## Why&#10;...&#10;&#10;## Testing&#10;- ...&#10;&#10;## Files Changed&#10;- ..."
-                    className="w-full rounded-lg border border-graphite-700 bg-graphite-950 p-3 font-mono text-xs text-mist-200 placeholder-mist-600 focus:border-amber-400 focus:outline-none disabled:opacity-50 resize-y"
-                  />
+
+                  {previewTab === 'edit' ? (
+                    <textarea
+                      id="pr-desc"
+                      rows={10}
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      disabled={isGenerating || isSubmitting}
+                      className="w-full rounded-xl border border-graphite-700 bg-graphite-950 p-3 font-mono text-xs text-mist-200 outline-none transition-colors placeholder:text-mist-600 focus:border-amber-400 disabled:opacity-50 resize-y leading-relaxed"
+                    />
+                  ) : (
+                    <div className="rounded-xl border border-graphite-700 bg-graphite-950 p-4 max-h-72 overflow-y-auto">
+                      <MarkdownRenderer content={description || '_No description provided._'} />
+                    </div>
+                  )}
                 </div>
               </form>
             </>
           )}
         </div>
 
-        {/* Modal Footer */}
+        {/* Footer */}
         {!createdPr && (
-          <div className="flex items-center justify-between border-t border-graphite-700 px-6 py-3.5 bg-graphite-900">
+          <div className="flex items-center justify-between border-t border-graphite-700/80 px-6 py-4 bg-graphite-850">
             <button
               type="button"
               onClick={loadPrDraft}
               disabled={isGenerating || isSubmitting}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-graphite-700 px-3 py-1.5 text-xs font-semibold text-mist-300 transition-colors hover:border-amber-400/60 hover:text-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
-              title="Regenerate PR title and description using AI"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-graphite-700 bg-graphite-800 px-3 py-1.5 text-xs font-semibold text-mist-300 transition-colors hover:border-amber-400/50 hover:text-amber-400 disabled:opacity-50"
             >
               <span className={isGenerating ? 'animate-spin' : ''}>⟳</span>
-              {isGenerating ? 'Generating…' : 'Regenerate'}
+              <span>{isGenerating ? 'Drafting with Gemini…' : 'Regenerate Draft'}</span>
             </button>
 
             <div className="flex items-center gap-2">
@@ -283,7 +339,7 @@ export default function CreatePrModal({
                 type="button"
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="rounded-lg border border-graphite-700 px-3.5 py-1.5 text-xs font-medium text-mist-400 transition-colors hover:bg-graphite-800 hover:text-mist-200 disabled:opacity-50"
+                className="rounded-lg border border-graphite-700 px-3.5 py-1.5 text-xs font-medium text-mist-400 hover:bg-graphite-800 hover:text-mist-200 disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -291,9 +347,9 @@ export default function CreatePrModal({
                 type="submit"
                 form="create-pr-form"
                 disabled={isSubmitting || isGenerating || !title.trim()}
-                className="rounded-lg bg-amber-400 px-4 py-1.5 text-xs font-semibold text-graphite-950 transition-colors hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-60 shadow-sm"
+                className="rounded-lg bg-amber-400 px-4 py-1.5 text-xs font-semibold text-graphite-950 transition-colors hover:bg-amber-500 disabled:opacity-50 shadow-sm"
               >
-                {isSubmitting ? 'Creating PR on GitHub…' : 'Create Pull Request'}
+                {isSubmitting ? 'Opening Pull Request…' : 'Open Pull Request'}
               </button>
             </div>
           </div>

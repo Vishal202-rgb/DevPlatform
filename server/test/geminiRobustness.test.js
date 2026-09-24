@@ -336,23 +336,32 @@ test('10. Score computation and issue summarization match established formulas',
   assert.equal(score, 72);
 });
 
-test('11. Failed analysis does NOT create fake/incomplete analysis record in database', async () => {
+test('11. Failed analysis transitions record status to FAILED and clears running state', async () => {
   const Analysis = require('../src/models/Analysis');
   const Repository = require('../src/models/Repository');
   const githubService = require('../src/services/githubService');
   const analysisService = require('../src/services/analysisService');
 
   let createCalled = false;
+  const mockRecord = {
+    status: 'running',
+    error: null,
+    save: async function () { return this; },
+  };
+
   const originalCreate = Analysis.create;
+  const originalUpdateMany = Analysis.updateMany;
   const originalFindOne = Repository.findOne;
   const originalGetUser = githubService.getUserWithGithubToken;
   const originalFetchFiles = githubService.fetchSourceFiles;
   const originalAnalyze = geminiService.analyzeCode;
 
-  Analysis.create = async () => {
+  Analysis.create = async (doc) => {
     createCalled = true;
-    return {};
+    mockRecord.status = doc.status;
+    return mockRecord;
   };
+  Analysis.updateMany = async () => ({ acknowledged: true, modifiedCount: 0 });
 
   Repository.findOne = async () => ({
     _id: 'fake-repo-id',
@@ -382,13 +391,65 @@ test('11. Failed analysis does NOT create fake/incomplete analysis record in dat
     assert.fail('Should have thrown on Gemini failure');
   } catch (err) {
     assert.equal(err.statusCode, 503);
-    assert.equal(createCalled, false, 'Analysis.create MUST NOT be called when analysis fails');
+    assert.equal(createCalled, true, 'Analysis record created with initial running state');
+    assert.equal(mockRecord.status, 'failed', 'Record status updated to failed');
+    assert.ok(mockRecord.error.includes('unavailable'), 'Failure reason recorded');
+    assert.equal(analysisService.getAnalysisStatus('fake-repo-id'), null, 'Running lock must be cleared on failure');
   } finally {
     Analysis.create = originalCreate;
+    Analysis.updateMany = originalUpdateMany;
     Repository.findOne = originalFindOne;
     githubService.getUserWithGithubToken = originalGetUser;
     githubService.fetchSourceFiles = originalFetchFiles;
     geminiService.analyzeCode = originalAnalyze;
+    analysisService.activeAnalysisJobs.delete('fake-repo-id');
+  }
+});
+
+test('12. Stale running jobs auto-recover based on timeout', () => {
+  const analysisService = require('../src/services/analysisService');
+  const staleRepoId = 'stale-repo-timeout-test';
+
+  analysisService.activeAnalysisJobs.set(staleRepoId, {
+    stage: 'analyzing',
+    message: 'AI code analysis in progress...',
+    startedAt: Date.now() - (4 * 60 * 1000), // 4 minutes ago (> 3 mins)
+  });
+
+  // Status check must detect stale lock and automatically release it
+  const status = analysisService.getAnalysisStatus(staleRepoId);
+  assert.equal(status, null, 'Stale job must return null status');
+  assert.equal(analysisService.activeAnalysisJobs.has(staleRepoId), false, 'Stale job must be removed from map');
+});
+
+test('13. Concurrency guard safely recovers stale lock and permits fresh analysis', async () => {
+  const analysisService = require('../src/services/analysisService');
+  const Repository = require('../src/models/Repository');
+  const Analysis = require('../src/models/Analysis');
+  const repoId = 'stale-lock-recovery-repo';
+
+  // Seed stale lock
+  analysisService.activeAnalysisJobs.set(repoId, {
+    stage: 'analyzing',
+    message: 'Stale job',
+    startedAt: Date.now() - (5 * 60 * 1000), // 5 minutes ago
+  });
+
+  const originalFindOne = Repository.findOne;
+  const originalUpdateMany = Analysis.updateMany;
+  Analysis.updateMany = async () => ({ acknowledged: true, modifiedCount: 0 });
+  Repository.findOne = async () => null; // Trigger 404 to verify concurrency guard did not block with 409
+
+  try {
+    await analysisService.runAnalysis('user-1', repoId);
+    assert.fail('Should fail on repository lookup, not on 409 concurrency lock');
+  } catch (err) {
+    // Should be 404 from getOwnedRepository, NOT 409 from concurrency guard
+    assert.equal(err.statusCode, 404);
+  } finally {
+    Repository.findOne = originalFindOne;
+    Analysis.updateMany = originalUpdateMany;
+    analysisService.activeAnalysisJobs.delete(repoId);
   }
 });
 
