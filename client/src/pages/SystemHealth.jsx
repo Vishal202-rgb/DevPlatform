@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchHealthCheck } from '../services/systemService';
 import { useToast } from '../hooks/useToast';
 
@@ -98,6 +98,8 @@ export default function SystemHealth() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const toast = useToast();
+  const toastRef = useRef(toast);
+  toastRef.current = toast;
 
   const runChecks = useCallback(async () => {
     setIsLoading(true);
@@ -105,15 +107,15 @@ export default function SystemHealth() {
     try {
       const data = await fetchHealthCheck();
       setResult(data);
-      toast.success('Diagnostics scan complete.', 'System Check');
+      toastRef.current.success('Diagnostics scan complete.', 'System Check');
     } catch (err) {
       const msg = err.message || 'Failed to run diagnostics.';
       setError(msg);
-      toast.error(msg, 'Diagnostics Failed');
+      toastRef.current.error(msg, 'Diagnostics Failed');
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, []);
 
   useEffect(() => {
     runChecks();
