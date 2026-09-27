@@ -2,10 +2,10 @@ export const severityConfig = {
   critical: {
     label: 'Critical',
     color: '#EF4444',
-    bg: 'bg-red-500/10',
-    border: 'border-red-500/30',
-    text: 'text-red-400',
-    dot: 'bg-red-400',
+    bg: 'bg-rose-500/10',
+    border: 'border-rose-500/30',
+    text: 'text-rose-400',
+    dot: 'bg-rose-400',
   },
   high: {
     label: 'High',
@@ -52,7 +52,7 @@ export default function SeveritySummary({ summary, activeSeverity, onSelectSever
             className={`group relative overflow-hidden rounded-xl border p-4 shadow-panel transition-all ${
               isSelected
                 ? `${cfg.border} ${cfg.bg} ring-1 ring-amber-400/40`
-                : 'border-graphite-700 bg-graphite-900 hover:border-graphite-600 hover:bg-graphite-850/60'
+                : 'border-graphite-750 bg-graphite-900/80 hover:border-graphite-600 hover:bg-graphite-850/60'
             } ${onSelectSeverity ? 'cursor-pointer select-none active:scale-[0.98]' : ''}`}
           >
             {/* Top hairline */}
@@ -66,7 +66,7 @@ export default function SeveritySummary({ summary, activeSeverity, onSelectSever
                 {cfg.label}
               </span>
               {isSelected && (
-                <span className="rounded bg-amber-400/20 px-1.5 py-0.5 text-[9px] font-mono text-amber-300">
+                <span className="rounded bg-amber-400/20 px-1.5 py-0.5 text-[9px] font-mono font-semibold text-amber-300">
                   Filtered
                 </span>
               )}

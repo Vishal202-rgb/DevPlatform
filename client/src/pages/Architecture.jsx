@@ -141,41 +141,42 @@ export default function Architecture() {
   const { incoming, outgoing } = nodeConnections();
 
   return (
-    <div className="flex h-[calc(100vh-6.5rem)] flex-col space-y-3">
+    <div className="flex h-[calc(100vh-6.5rem)] flex-col space-y-3 pb-2">
       {/* Top Bar */}
-      <div className="flex items-center justify-between shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 shrink-0 border-b border-graphite-800 pb-3">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-mist-100">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-mist-100">
               Architecture Graph
             </h1>
             {graphData?.nodes && (
-              <span className="rounded-full border border-graphite-700 bg-graphite-800 px-2 py-0.5 text-[10px] font-mono text-mist-400">
-                {graphData.nodes.length} modules · {graphData.links?.length || 0} links
+              <span className="rounded-full border border-graphite-750 bg-graphite-800 px-2.5 py-0.5 text-[10px] font-mono text-mist-300">
+                {graphData.nodes.length} modules · {graphData.links?.length || 0} dependencies
               </span>
             )}
           </div>
-          <p className="text-xs text-mist-400">
-            Interactive 2D force-directed simulation of module imports and system boundaries.
+          <p className="text-xs text-mist-400 mt-0.5">
+            Interactive 2D force-directed simulation of module imports, boundaries, and coupling.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 self-start sm:self-auto">
           <Link
             to="/dashboard/repositories"
-            className="text-xs font-mono text-mist-400 hover:text-amber-400 transition-colors"
+            className="text-xs font-mono text-mist-400 hover:text-amber-400 transition-colors flex items-center gap-1"
           >
-            ← Repositories
+            <span>←</span>
+            <span>Repositories</span>
           </Link>
         </div>
       </div>
 
       {error && (
-        <div className="flex items-center justify-between rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-300">
+        <div className="flex items-center justify-between rounded-xl border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs text-rose-300 font-mono">
           <span>{error}</span>
           <button
             onClick={loadGraph}
-            className="rounded bg-red-500/20 px-2 py-1 font-semibold text-red-200 hover:bg-red-500/30"
+            className="rounded-lg bg-rose-500/20 px-3 py-1 font-semibold text-rose-200 hover:bg-rose-500/30 transition-colors"
           >
             Retry
           </button>
@@ -185,32 +186,42 @@ export default function Architecture() {
       {/* Main Canvas Container */}
       <div
         ref={containerRef}
-        className="relative flex-1 overflow-hidden rounded-xl border border-graphite-700 bg-[#0A0D14] shadow-panel"
+        className="relative flex-1 overflow-hidden rounded-2xl border border-graphite-750 bg-[#090B10] shadow-panel"
       >
         {isAnalyzing ? (
           <div className="flex h-full flex-col items-center justify-center p-10 text-center space-y-4">
-            <div className="relative h-12 w-12 flex items-center justify-center">
+            <div className="relative h-14 w-14 flex items-center justify-center">
               <div className="absolute inset-0 rounded-full border-2 border-amber-400/20 border-t-amber-400 animate-spin" />
-              <span className="text-lg">🕸</span>
+              <svg className="h-6 w-6 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <ellipse cx="12" cy="5" rx="9" ry="3" />
+                <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+                <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+              </svg>
             </div>
             <div>
-              <p className="font-mono text-sm font-semibold text-amber-400">
+              <p className="font-mono text-sm sm:text-base font-semibold text-amber-400">
                 Parsing AST dependencies…
               </p>
-              <p className="mx-auto mt-1 max-w-sm text-xs text-mist-400">
-                Gemini is tracing file imports, route handlers, and database models.
+              <p className="mx-auto mt-1 max-w-sm text-xs text-mist-400 leading-relaxed">
+                Gemini is tracing file imports, route handlers, middleware, and database models.
               </p>
             </div>
           </div>
         ) : isLoading ? (
           <div className="flex h-full flex-col items-center justify-center text-center">
-            <span className="h-6 w-6 rounded-full border-2 border-mist-500 border-t-amber-400 animate-spin mb-3" />
+            <span className="h-6 w-6 rounded-full border-2 border-graphite-700 border-t-amber-400 animate-spin mb-3" />
             <p className="font-mono text-xs text-mist-400">Loading module topology…</p>
           </div>
         ) : !graphData || !graphData.nodes?.length ? (
           <div className="flex h-full items-center justify-center p-6">
             <EmptyState
-              icon="🕸"
+              icon={
+                <svg className="h-6 w-6 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <ellipse cx="12" cy="5" rx="9" ry="3" />
+                  <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+                  <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+                </svg>
+              }
               title="No architecture graph generated yet"
               description="Analyze this repository to generate an interactive graph visualization of all imported components, routes, and services."
               actionLabel="Generate Architecture Graph"
@@ -224,10 +235,12 @@ export default function Architecture() {
               <button
                 onClick={handleAnalyze}
                 disabled={isAnalyzing}
-                className="inline-flex items-center gap-1 rounded-lg border border-graphite-700 bg-graphite-800 px-2.5 py-1 text-xs font-medium text-mist-200 hover:border-amber-400/40 hover:text-amber-400 transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-graphite-700 bg-graphite-800 px-3 py-1 text-xs font-medium text-mist-200 hover:border-amber-400/40 hover:text-amber-400 transition-colors disabled:opacity-50"
                 title="Regenerate graph layout"
               >
-                <span>⟳</span>
+                <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+                </svg>
                 <span className="hidden sm:inline">Regenerate</span>
               </button>
 
@@ -237,6 +250,7 @@ export default function Architecture() {
                 onClick={handleZoomIn}
                 className="flex h-7 w-7 items-center justify-center rounded-lg bg-graphite-800 text-mist-300 hover:bg-graphite-700 hover:text-mist-100 transition-colors text-sm font-bold"
                 title="Zoom in"
+                aria-label="Zoom in"
               >
                 +
               </button>
@@ -245,13 +259,14 @@ export default function Architecture() {
                 onClick={handleZoomOut}
                 className="flex h-7 w-7 items-center justify-center rounded-lg bg-graphite-800 text-mist-300 hover:bg-graphite-700 hover:text-mist-100 transition-colors text-sm font-bold"
                 title="Zoom out"
+                aria-label="Zoom out"
               >
                 −
               </button>
 
               <button
                 onClick={handleFit}
-                className="inline-flex items-center gap-1 rounded-lg bg-graphite-800 px-2 py-1 text-xs text-mist-300 hover:bg-graphite-700 hover:text-mist-100 transition-colors"
+                className="inline-flex items-center gap-1 rounded-lg bg-graphite-800 px-2.5 py-1 text-xs font-medium text-mist-300 hover:bg-graphite-700 hover:text-mist-100 transition-colors"
                 title="Fit to view"
               >
                 Fit
@@ -260,14 +275,14 @@ export default function Architecture() {
 
             {/* Bottom-left Legend */}
             <div className="absolute bottom-4 left-4 z-20 hidden sm:flex flex-col gap-1.5 rounded-xl border border-graphite-700 bg-graphite-900/90 p-3 shadow-xl backdrop-blur-md max-w-xs">
-              <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-mist-500">
+              <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-mist-400">
                 Module Legend
               </span>
               <div className="grid grid-cols-2 gap-x-3 gap-y-1">
                 {MODULE_LEGEND.map((item) => (
-                  <div key={item.label} className="flex items-center gap-1.5 text-[11px] text-mist-300">
+                  <div key={item.label} className="flex items-center gap-1.5 text-[11px] text-mist-300 font-mono">
                     <span
-                      className="h-2 w-2 rounded-full shrink-0"
+                      className="h-2 w-2 rounded-full shrink-0 shadow-sm"
                       style={{ backgroundColor: item.color }}
                     />
                     <span className="truncate">{item.label}</span>
@@ -278,13 +293,13 @@ export default function Architecture() {
 
             {/* Floating Selection Details Drawer */}
             {selectedNode && (
-              <div className="absolute top-4 right-4 z-30 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-graphite-700 bg-graphite-900/95 p-4 shadow-2xl backdrop-blur-md animate-scale-in">
+              <div className="absolute top-4 right-4 z-30 w-80 max-w-[calc(100vw-2rem)] rounded-2xl border border-graphite-700 bg-graphite-900/95 p-4 shadow-2xl backdrop-blur-md animate-scale-in">
                 <div className="flex items-start justify-between gap-2 border-b border-graphite-800 pb-2.5">
                   <div className="min-w-0">
-                    <span className="rounded bg-graphite-800 px-1.5 py-0.5 font-mono text-[10px] text-amber-400 border border-graphite-700">
+                    <span className="rounded-md bg-graphite-800 px-2 py-0.5 font-mono text-[10px] text-amber-400 border border-graphite-700">
                       Selected Module
                     </span>
-                    <h3 className="mt-1 font-mono text-sm font-semibold text-mist-100 truncate">
+                    <h3 className="mt-1.5 font-mono text-sm font-semibold text-mist-100 truncate">
                       {selectedNode.name || selectedNode.id}
                     </h3>
                   </div>
@@ -293,7 +308,13 @@ export default function Architecture() {
                     className="rounded-lg p-1 text-mist-400 hover:bg-graphite-800 hover:text-mist-100"
                     aria-label="Close details"
                   >
-                    ✕
+                    <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                      <path
+                        fillRule="evenodd"
+                        d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
                   </button>
                 </div>
 
@@ -327,9 +348,12 @@ export default function Architecture() {
                   <div className="border-t border-graphite-800 pt-3">
                     <button
                       onClick={() => navigate(`/dashboard/repositories/${repositoryId}/chat`)}
-                      className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-semibold text-graphite-950 transition-colors hover:bg-amber-500 shadow-sm"
+                      className="w-full flex items-center justify-center gap-2 rounded-lg bg-amber-400 px-3 py-2 text-xs font-semibold text-graphite-950 transition-all hover:bg-amber-300 shadow-sm active:scale-95"
                     >
-                      <span>💬 Ask Chat about this module</span>
+                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                      </svg>
+                      <span>Ask AI about this module</span>
                     </button>
                   </div>
                 </div>

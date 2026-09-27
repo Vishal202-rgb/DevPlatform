@@ -101,11 +101,13 @@ function IssueRow({ issue, analysisId, readOnly }) {
   };
 
   return (
-    <div className={`overflow-hidden rounded-xl border transition-all ${
-      expanded
-        ? 'border-graphite-600 bg-graphite-900 shadow-panel-hover'
-        : 'border-graphite-700 bg-graphite-900/90 hover:border-graphite-600 hover:bg-graphite-900'
-    }`}>
+    <div
+      className={`overflow-hidden rounded-xl border transition-all ${
+        expanded
+          ? 'border-graphite-600 bg-graphite-900 shadow-panel-hover'
+          : 'border-graphite-750 bg-graphite-900/90 hover:border-graphite-600 hover:bg-graphite-850/60'
+      }`}
+    >
       {/* Clickable Header */}
       <div
         role="button"
@@ -130,10 +132,13 @@ function IssueRow({ issue, analysisId, readOnly }) {
               {categoryLabels[issueState.category] || issueState.category}
             </span>
 
-            <span className="inline-flex items-center gap-1 rounded bg-graphite-800/80 px-2 py-0.5 font-mono text-[11px] text-mist-300 border border-graphite-700/60 max-w-[280px] sm:max-w-md truncate">
-              <span>📄</span>
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-graphite-800/90 px-2.5 py-0.5 font-mono text-[11px] text-mist-300 border border-graphite-700 max-w-[280px] sm:max-w-md truncate">
+              <svg className="h-3 w-3 text-mist-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+              </svg>
               <span className="truncate">{issueState.file}</span>
-              {issueState.line ? <span className="text-amber-400">:{issueState.line}</span> : null}
+              {issueState.line ? <span className="text-amber-400 font-bold">:{issueState.line}</span> : null}
             </span>
 
             {issueState.repository && (
@@ -142,7 +147,7 @@ function IssueRow({ issue, analysisId, readOnly }) {
                 target="_blank"
                 rel="noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="truncate rounded-full border border-graphite-700 bg-graphite-800 px-2 py-0.5 text-[10px] font-mono text-amber-400 hover:underline"
+                className="truncate rounded-full border border-graphite-700 bg-graphite-800 px-2 py-0.5 text-[10px] font-mono text-amber-400 hover:text-amber-300 hover:underline"
               >
                 {issueState.repository.fullName}
               </a>
@@ -175,10 +180,10 @@ function IssueRow({ issue, analysisId, readOnly }) {
 
         {/* Expand toggle */}
         <div className="flex items-center gap-1 shrink-0 pt-0.5">
-          <span className="text-xs text-mist-500 hidden sm:inline">
+          <span className="text-xs text-mist-500 hidden sm:inline font-mono">
             {expanded ? 'Hide details' : 'View details'}
           </span>
-          <span className="flex h-6 w-6 items-center justify-center rounded-md border border-graphite-700 bg-graphite-800 text-mist-400 text-xs font-mono">
+          <span className="flex h-6 w-6 items-center justify-center rounded-lg border border-graphite-700 bg-graphite-800 text-mist-400 text-xs font-mono">
             {expanded ? '−' : '+'}
           </span>
         </div>
@@ -186,14 +191,18 @@ function IssueRow({ issue, analysisId, readOnly }) {
 
       {/* Expanded details */}
       {expanded && (
-        <div className="border-t border-graphite-700/80 bg-graphite-950/40 p-4 sm:p-5 text-xs sm:text-sm space-y-4 animate-fade-in">
+        <div className="border-t border-graphite-750 bg-graphite-950/60 p-4 sm:p-5 text-xs sm:text-sm space-y-4 animate-fade-in">
           {/* Recommendation */}
           <div>
-            <div className="flex items-center gap-1.5 text-xs font-mono font-semibold uppercase tracking-wider text-mist-400">
-              <span className="text-amber-400">💡</span>
-              <span>Recommendation</span>
+            <div className="flex items-center gap-1.5 text-xs font-mono font-semibold uppercase tracking-wider text-amber-400/90 mb-1.5">
+              <svg className="h-3.5 w-3.5 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 18h6" />
+                <path d="M10 22h4" />
+                <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14" />
+              </svg>
+              <span>Remediation Recommendation</span>
             </div>
-            <p className="mt-1.5 text-mist-300 leading-relaxed bg-graphite-900/60 border border-graphite-750 rounded-lg p-3">
+            <p className="text-mist-300 leading-relaxed bg-graphite-900/80 border border-graphite-750 rounded-lg p-3">
               {issueState.recommendation}
             </p>
           </div>
@@ -202,21 +211,23 @@ function IssueRow({ issue, analysisId, readOnly }) {
           {issueState.suggestedFix && (
             <div>
               <div className="flex items-center justify-between text-xs font-mono font-semibold uppercase tracking-wider text-mist-400 mb-1.5">
-                <span className="flex items-center gap-1.5">
-                  <span className="text-emerald-400">⚡</span>
+                <span className="flex items-center gap-1.5 text-emerald-400">
+                  <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="currentColor" />
+                  </svg>
                   <span>Suggested Fix Diff</span>
                 </span>
                 <CopyCodeButton text={issueState.suggestedFix} />
               </div>
 
-              <pre className="overflow-x-auto rounded-lg border border-graphite-700 bg-graphite-950 p-3.5 font-mono text-xs text-amber-300/90 leading-relaxed">
+              <pre className="overflow-x-auto rounded-lg border border-graphite-700 bg-graphite-950 p-3.5 font-mono text-xs text-amber-300/90 leading-relaxed shadow-inner">
                 <code>{issueState.suggestedFix}</code>
               </pre>
 
               <p className="mt-1.5 text-[11px] text-mist-500">
                 {readOnly
                   ? 'Reference fix recommendation.'
-                  : 'Click "Apply Fix" below to have Gemini rewrite the affected file and commit to a new Git branch.'}
+                  : 'Click "Apply Fix" below to have Gemini update the file and commit to a new Git branch.'}
               </p>
             </div>
           )}
@@ -229,7 +240,7 @@ function IssueRow({ issue, analysisId, readOnly }) {
                   href={issueState.fixCompareUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-400 transition-colors hover:bg-emerald-500/20"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-1.5 text-xs font-semibold text-emerald-400 transition-colors hover:bg-emerald-500/20"
                 >
                   <span>View Fix Branch</span>
                   <span>↗</span>
@@ -240,7 +251,7 @@ function IssueRow({ issue, analysisId, readOnly }) {
                       href={issueState.prUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="rounded-lg border border-purple-500/30 bg-purple-500/10 px-3 py-1.5 text-xs font-semibold text-purple-300 transition-colors hover:bg-purple-500/20"
+                      className="rounded-lg border border-purple-500/30 bg-purple-500/10 px-3.5 py-1.5 text-xs font-semibold text-purple-300 transition-colors hover:bg-purple-500/20"
                     >
                       PR #{issueState.prNumber} Open ↗
                     </a>
@@ -251,7 +262,7 @@ function IssueRow({ issue, analysisId, readOnly }) {
                         setPrModalBranchType('fix');
                         setIsPrModalOpen(true);
                       }}
-                      className="rounded-lg bg-amber-400 px-3.5 py-1.5 text-xs font-semibold text-graphite-950 transition-colors hover:bg-amber-500 shadow-sm"
+                      className="rounded-lg bg-amber-400 px-3.5 py-1.5 text-xs font-semibold text-graphite-950 transition-colors hover:bg-amber-300 shadow-sm"
                     >
                       Create Pull Request
                     </button>
@@ -262,7 +273,7 @@ function IssueRow({ issue, analysisId, readOnly }) {
               <button
                 onClick={handleApplyFix}
                 disabled={isApplying}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-amber-400 px-3.5 py-1.5 text-xs font-semibold text-graphite-950 transition-colors hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-60 shadow-sm active:scale-95"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-amber-400 px-3.5 py-1.5 text-xs font-semibold text-graphite-950 transition-all hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60 shadow-sm active:scale-95"
               >
                 {isApplying ? (
                   <>
@@ -271,7 +282,9 @@ function IssueRow({ issue, analysisId, readOnly }) {
                   </>
                 ) : (
                   <>
-                    <span>⚡</span>
+                    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="currentColor" />
+                    </svg>
                     <span>Apply Fix</span>
                   </>
                 )}
@@ -282,16 +295,18 @@ function IssueRow({ issue, analysisId, readOnly }) {
               <button
                 onClick={handleGenerateTests}
                 disabled={isGeneratingTests}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-graphite-600 bg-graphite-800 px-3 py-1.5 text-xs font-semibold text-mist-200 transition-colors hover:border-amber-400/50 hover:text-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-graphite-700 bg-graphite-800 px-3.5 py-1.5 text-xs font-semibold text-mist-200 transition-colors hover:border-amber-400/50 hover:text-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isGeneratingTests ? (
                   <>
                     <span className="h-2 w-2 rounded-full bg-amber-400 animate-ping" />
-                    <span>Generating Unit Tests…</span>
+                    <span>Generating Tests…</span>
                   </>
                 ) : (
                   <>
-                    <span>🧪</span>
+                    <svg className="h-3.5 w-3.5 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M10 2v7.31M14 2v7.31M8.5 2h7M14 9.3a6.5 6.5 0 1 1-4 0" />
+                    </svg>
                     <span>Generate Tests</span>
                   </>
                 )}
@@ -306,7 +321,7 @@ function IssueRow({ issue, analysisId, readOnly }) {
           </div>
 
           {applyError && (
-            <p className="rounded-lg border border-red-500/30 bg-red-500/10 p-2.5 text-xs text-red-300 font-mono">
+            <p className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-2.5 text-xs text-rose-300 font-mono">
               {applyError}
             </p>
           )}
@@ -315,14 +330,16 @@ function IssueRow({ issue, analysisId, readOnly }) {
           {generatedTestContent && (
             <div className="mt-4 border-t border-graphite-800 pt-3.5 space-y-2.5">
               <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-xs font-mono font-semibold uppercase tracking-wider text-mist-400">
-                  <span className="text-sky-400">🧪</span>
+                <span className="flex items-center gap-1.5 text-xs font-mono font-semibold uppercase tracking-wider text-sky-400">
+                  <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M10 2v7.31M14 2v7.31M8.5 2h7M14 9.3a6.5 6.5 0 1 1-4 0" />
+                  </svg>
                   <span>Generated Regression Tests</span>
                 </span>
                 <CopyCodeButton text={generatedTestContent} />
               </div>
 
-              <pre className="max-h-64 overflow-x-auto rounded-lg border border-graphite-700 bg-graphite-950 p-3.5 font-mono text-xs text-sky-300/90 leading-relaxed">
+              <pre className="max-h-64 overflow-x-auto rounded-lg border border-graphite-700 bg-graphite-950 p-3.5 font-mono text-xs text-sky-300/90 leading-relaxed shadow-inner">
                 <code>{generatedTestContent}</code>
               </pre>
 
@@ -330,7 +347,7 @@ function IssueRow({ issue, analysisId, readOnly }) {
                 <button
                   onClick={handleApplyTests}
                   disabled={isApplyingTests}
-                  className="rounded-lg bg-emerald-400 px-3.5 py-1.5 text-xs font-semibold text-graphite-950 transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60 shadow-sm"
+                  className="rounded-lg bg-emerald-400 px-3.5 py-1.5 text-xs font-semibold text-graphite-950 transition-colors hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60 shadow-sm"
                 >
                   {isApplyingTests ? 'Committing Tests…' : 'Apply Tests to Repository'}
                 </button>
@@ -362,7 +379,7 @@ function IssueRow({ issue, analysisId, readOnly }) {
                             setPrModalBranchType('test');
                             setIsPrModalOpen(true);
                           }}
-                          className="rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-semibold text-graphite-950 transition-colors hover:bg-amber-500 shadow-sm"
+                          className="rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-semibold text-graphite-950 transition-colors hover:bg-amber-300 shadow-sm"
                         >
                           Create Pull Request
                         </button>
@@ -375,7 +392,7 @@ function IssueRow({ issue, analysisId, readOnly }) {
                   <span className="text-xs text-emerald-400 font-mono">{testApplySuccess}</span>
                 )}
                 {testApplyError && (
-                  <span className="text-xs text-red-400 font-mono">{testApplyError}</span>
+                  <span className="text-xs text-rose-400 font-mono">{testApplyError}</span>
                 )}
               </div>
             </div>
@@ -455,9 +472,17 @@ export default function IssueList({
 
   if (issues.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-emerald-500/20 bg-emerald-500/5 p-8 text-center">
-        <span className="text-2xl">🎉</span>
-        <h3 className="mt-2 text-sm font-semibold text-emerald-400">Zero Issues Detected</h3>
+      <div className="rounded-2xl border border-dashed border-emerald-500/20 bg-emerald-500/5 p-8 text-center">
+        <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path
+              fillRule="evenodd"
+              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+              clipRule="evenodd"
+            />
+          </svg>
+        </div>
+        <h3 className="text-sm font-semibold text-emerald-400 font-mono">Zero Issues Detected</h3>
         <p className="mx-auto mt-1 max-w-sm text-xs text-mist-400">
           Clean scan. No critical bugs, security vulnerabilities, or code smells identified.
         </p>
@@ -482,13 +507,15 @@ export default function IssueList({
                 className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium capitalize transition-colors ${
                   isSelected
                     ? 'bg-amber-400 text-graphite-950 font-semibold shadow-sm'
-                    : 'border border-graphite-700 bg-graphite-900 text-mist-400 hover:text-mist-100 hover:bg-graphite-800'
+                    : 'border border-graphite-750 bg-graphite-900 text-mist-400 hover:text-mist-100 hover:bg-graphite-800'
                 }`}
               >
                 <span>{key}</span>
-                <span className={`rounded-full px-1.5 py-0.2 text-[10px] font-mono ${
-                  isSelected ? 'bg-graphite-950/20 text-graphite-950' : 'bg-graphite-800 text-mist-400'
-                }`}>
+                <span
+                  className={`rounded-full px-1.5 py-0.2 text-[10px] font-mono ${
+                    isSelected ? 'bg-graphite-950/20 text-graphite-950 font-bold' : 'bg-graphite-800 text-mist-400'
+                  }`}
+                >
                   {count}
                 </span>
               </button>
@@ -503,17 +530,33 @@ export default function IssueList({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Filter issues by file or keyword…"
-            className="w-full rounded-lg border border-graphite-700 bg-graphite-900 py-1.5 pl-8 pr-7 text-xs text-mist-100 outline-none transition-colors placeholder:text-mist-500 focus:border-amber-400"
+            className="w-full rounded-lg border border-graphite-750 bg-graphite-900 py-1.5 pl-8 pr-7 text-xs text-mist-100 outline-none transition-colors placeholder:text-mist-500 focus:border-amber-400"
           />
-          <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-mist-500 text-xs">
-            🔍
-          </span>
+          <svg
+            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-mist-500"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" x2="16.65" y1="21" y2="16.65" />
+          </svg>
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-mist-500 hover:text-mist-200"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-mist-500 hover:text-mist-200"
+              aria-label="Clear issue search"
             >
-              ✕
+              <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                <path
+                  fillRule="evenodd"
+                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                  clipRule="evenodd"
+                />
+              </svg>
             </button>
           )}
         </div>
@@ -521,7 +564,7 @@ export default function IssueList({
 
       {/* Issue rows */}
       {filtered.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-graphite-700 bg-graphite-900/60 p-8 text-center">
+        <div className="rounded-xl border border-dashed border-graphite-750 bg-graphite-900/60 p-8 text-center">
           <p className="text-xs text-mist-400 font-mono">
             No issues match the selected filter ({currentFilter}) or search query.
           </p>
@@ -530,7 +573,7 @@ export default function IssueList({
               setFilter('all');
               setSearchQuery('');
             }}
-            className="mt-2 text-xs text-amber-400 hover:underline"
+            className="mt-2 text-xs text-amber-400 hover:underline font-mono"
           >
             Clear filters
           </button>

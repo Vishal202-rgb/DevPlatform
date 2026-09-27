@@ -10,7 +10,7 @@ export default function StatCard({
   linkTo,
 }) {
   const content = (
-    <div className="group relative flex flex-col justify-between overflow-hidden rounded-xl border border-graphite-700 bg-graphite-900 p-5 shadow-panel transition-all duration-200 hover:border-graphite-600 hover:shadow-panel-hover">
+    <div className="group relative flex flex-col justify-between overflow-hidden rounded-xl border border-graphite-750 bg-graphite-900/90 p-5 shadow-panel transition-all duration-200 hover:border-graphite-600 hover:bg-graphite-850/80 hover:shadow-panel-hover">
       {/* Top highlight hairline */}
       <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-graphite-600/40 to-transparent" />
 
@@ -25,14 +25,14 @@ export default function StatCard({
             </span>
           )}
           {icon && (
-            <span className="text-mist-500 group-hover:text-amber-400 transition-colors">
+            <span className="text-mist-400 group-hover:text-amber-400 transition-colors">
               {icon}
             </span>
           )}
         </div>
 
         <p
-          className={`mt-3 font-mono text-3xl font-semibold tracking-tight tabular-nums ${
+          className={`mt-3 font-mono text-3xl font-bold tracking-tight tabular-nums ${
             accent ? 'text-amber-400' : 'text-mist-100'
           }`}
         >
@@ -49,7 +49,11 @@ export default function StatCard({
   );
 
   if (linkTo) {
-    return <Link to={linkTo} className="block transition-transform hover:-translate-y-0.5">{content}</Link>;
+    return (
+      <Link to={linkTo} className="block transition-transform duration-150 hover:-translate-y-0.5 focus:outline-none">
+        {content}
+      </Link>
+    );
   }
 
   return content;

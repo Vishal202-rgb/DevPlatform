@@ -1,7 +1,7 @@
 export function Skeleton({ className = '' }) {
   return (
     <div
-      className={`skeleton-shimmer rounded-md ${className}`}
+      className={`skeleton-shimmer rounded-lg ${className}`}
       aria-hidden="true"
     />
   );
@@ -9,7 +9,7 @@ export function Skeleton({ className = '' }) {
 
 export function StatCardSkeleton() {
   return (
-    <div className="rounded-xl border border-graphite-700 bg-graphite-900 p-5 shadow-panel">
+    <div className="rounded-xl border border-graphite-750 bg-graphite-900/90 p-5 shadow-panel">
       <Skeleton className="h-3 w-24 mb-3" />
       <Skeleton className="h-8 w-16 mb-2" />
       <Skeleton className="h-3 w-32" />
@@ -19,7 +19,7 @@ export function StatCardSkeleton() {
 
 export function RepositoryCardSkeleton() {
   return (
-    <div className="flex flex-col justify-between rounded-xl border border-graphite-700 bg-graphite-900 p-5 shadow-panel">
+    <div className="flex flex-col justify-between rounded-xl border border-graphite-750 bg-graphite-900/90 p-5 shadow-panel">
       <div>
         <div className="flex items-start justify-between gap-2">
           <Skeleton className="h-4 w-36" />
@@ -33,7 +33,7 @@ export function RepositoryCardSkeleton() {
           <Skeleton className="h-3 w-12" />
         </div>
       </div>
-      <div className="mt-6 flex gap-2">
+      <div className="mt-6 flex gap-2 pt-3 border-t border-graphite-800">
         <Skeleton className="h-8 flex-1 rounded-lg" />
         <Skeleton className="h-8 flex-1 rounded-lg" />
       </div>
@@ -43,7 +43,7 @@ export function RepositoryCardSkeleton() {
 
 export function IssueRowSkeleton() {
   return (
-    <div className="rounded-xl border border-graphite-700 bg-graphite-900 p-4 shadow-panel">
+    <div className="rounded-xl border border-graphite-750 bg-graphite-900/90 p-4 shadow-panel">
       <div className="flex items-center gap-2 mb-2.5">
         <Skeleton className="h-4 w-16 rounded-full" />
         <Skeleton className="h-4 w-20 rounded-full" />
@@ -56,7 +56,7 @@ export function IssueRowSkeleton() {
 
 export function TableRowSkeleton({ cols = 6 }) {
   return (
-    <tr className="border-b border-graphite-700/60">
+    <tr className="border-b border-graphite-800">
       {Array.from({ length: cols }).map((_, i) => (
         <td key={i} className="px-4 py-3.5">
           <Skeleton className="h-4 w-full max-w-[120px]" />

@@ -17,10 +17,10 @@ const githubErrorMessages = {
 };
 
 function scoreColor(score) {
-  if (score === null || score === undefined) return 'text-mist-400';
+  if (score === null || score === undefined) return 'text-mist-500';
   if (score >= 80) return 'text-emerald-400';
   if (score >= 50) return 'text-amber-400';
-  return 'text-red-400';
+  return 'text-rose-400';
 }
 
 export default function Dashboard() {
@@ -97,11 +97,16 @@ export default function Dashboard() {
   }, [issues]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-8">
       {/* Page Header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-graphite-800 pb-5">
         <div>
-          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-mist-100">
+          <div className="flex items-center gap-2 text-[11px] font-mono text-mist-400">
+            <span>Platform</span>
+            <span>/</span>
+            <span className="text-amber-400 font-semibold">Workspace Overview</span>
+          </div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-mist-100 mt-1">
             Platform Overview
           </h1>
           <p className="mt-1 text-xs sm:text-sm text-mist-400">
@@ -109,10 +114,10 @@ export default function Dashboard() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <Link
             to="/dashboard/repositories"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-amber-400 px-3.5 py-1.5 text-xs font-semibold text-graphite-950 transition-colors hover:bg-amber-500 shadow-sm active:scale-95"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-amber-400 px-4 py-2 text-xs font-semibold text-graphite-950 transition-all hover:bg-amber-300 shadow-sm active:scale-95"
           >
             <span>Scan Repository</span>
             <span>+</span>
@@ -233,7 +238,7 @@ export default function Dashboard() {
             {analyses.length > 0 && (
               <Link
                 to="/dashboard/analyses"
-                className="text-xs font-mono text-amber-400 hover:underline"
+                className="text-xs font-mono text-amber-400 hover:text-amber-300 transition-colors"
               >
                 View all ({analyses.length}) →
               </Link>
@@ -249,12 +254,12 @@ export default function Dashboard() {
               actionLink="/dashboard/repositories"
             />
           ) : (
-            <div className="overflow-hidden rounded-xl border border-graphite-700 bg-graphite-900 shadow-panel">
-              <div className="divide-y divide-graphite-700/60">
+            <div className="overflow-hidden rounded-xl border border-graphite-750 bg-graphite-900/90 shadow-panel">
+              <div className="divide-y divide-graphite-800/80">
                 {analyses.slice(0, 5).map((a) => (
                   <div
                     key={a._id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between p-4 hover:bg-graphite-850/50 transition-colors gap-3"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between p-4 hover:bg-graphite-850/60 transition-colors gap-3"
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
@@ -269,16 +274,16 @@ export default function Dashboard() {
                           <span className="text-mist-500 font-mono text-sm">Archived Repo</span>
                         )}
                         <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] font-mono uppercase tracking-wide ${
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wider ${
                             a.status === 'completed'
-                              ? 'bg-emerald-400/10 text-emerald-400 border border-emerald-400/20'
-                              : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                              : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                           }`}
                         >
                           {a.status}
                         </span>
                       </div>
-                      <p className="mt-1 text-xs text-mist-500">
+                      <p className="mt-1 text-xs text-mist-400 font-mono">
                         {a.filesAnalyzed || 0} files analyzed · Reviewed on {new Date(a.createdAt).toLocaleDateString()}
                       </p>
                     </div>
@@ -287,14 +292,14 @@ export default function Dashboard() {
                       <div className="text-right">
                         <span className="text-[10px] uppercase font-mono text-mist-500 block">Score</span>
                         <span className={`font-mono text-base font-bold ${scoreColor(a.overallScore)}`}>
-                          {a.overallScore ?? '—'}
+                          {a.overallScore !== null && a.overallScore !== undefined ? `${a.overallScore}/100` : '—'}
                         </span>
                       </div>
 
                       {a.repository && (
                         <Link
                           to={`/dashboard/repositories/${a.repository._id}/analysis`}
-                          className="rounded-lg border border-graphite-700 bg-graphite-800 px-3 py-1.5 text-xs font-medium text-mist-200 hover:border-amber-400/50 hover:text-amber-400 transition-colors"
+                          className="rounded-lg border border-graphite-700 bg-graphite-800 px-3 py-1.5 text-xs font-semibold text-mist-200 hover:border-amber-400/50 hover:text-amber-400 transition-colors"
                         >
                           Details →
                         </Link>
@@ -316,10 +321,12 @@ export default function Dashboard() {
           <div className="space-y-3">
             <Link
               to="/dashboard/repositories"
-              className="flex items-start gap-3.5 rounded-xl border border-graphite-700 bg-graphite-900 p-4 shadow-panel transition-all hover:border-graphite-600 hover:bg-graphite-850/60 group"
+              className="flex items-start gap-3.5 rounded-xl border border-graphite-750 bg-graphite-900/90 p-4 shadow-panel transition-all hover:border-graphite-600 hover:bg-graphite-850/80 group"
             >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-400/10 text-amber-400 font-mono text-sm border border-amber-400/20 group-hover:scale-105 transition-transform">
-                AI
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-400/10 text-amber-400 font-mono text-sm border border-amber-400/20 group-hover:scale-105 transition-transform shadow-sm">
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="currentColor" />
+                </svg>
               </div>
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-mist-100 group-hover:text-amber-400 transition-colors">
@@ -333,10 +340,12 @@ export default function Dashboard() {
 
             <Link
               to="/dashboard/repositories"
-              className="flex items-start gap-3.5 rounded-xl border border-graphite-700 bg-graphite-900 p-4 shadow-panel transition-all hover:border-graphite-600 hover:bg-graphite-850/60 group"
+              className="flex items-start gap-3.5 rounded-xl border border-graphite-750 bg-graphite-900/90 p-4 shadow-panel transition-all hover:border-graphite-600 hover:bg-graphite-850/80 group"
             >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-sky-400 font-mono text-sm border border-sky-500/20 group-hover:scale-105 transition-transform">
-                💬
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-sky-400 font-mono text-sm border border-sky-500/20 group-hover:scale-105 transition-transform shadow-sm">
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
               </div>
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-mist-100 group-hover:text-sky-400 transition-colors">
@@ -350,10 +359,14 @@ export default function Dashboard() {
 
             <Link
               to="/dashboard/repositories"
-              className="flex items-start gap-3.5 rounded-xl border border-graphite-700 bg-graphite-900 p-4 shadow-panel transition-all hover:border-graphite-600 hover:bg-graphite-850/60 group"
+              className="flex items-start gap-3.5 rounded-xl border border-graphite-750 bg-graphite-900/90 p-4 shadow-panel transition-all hover:border-graphite-600 hover:bg-graphite-850/80 group"
             >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-purple-500/10 text-purple-400 font-mono text-sm border border-purple-500/20 group-hover:scale-105 transition-transform">
-                🕸
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-purple-500/10 text-purple-400 font-mono text-sm border border-purple-500/20 group-hover:scale-105 transition-transform shadow-sm">
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <ellipse cx="12" cy="5" rx="9" ry="3" />
+                  <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+                  <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+                </svg>
               </div>
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-mist-100 group-hover:text-purple-400 transition-colors">
@@ -367,10 +380,16 @@ export default function Dashboard() {
 
             <Link
               to="/dashboard/system-health"
-              className="flex items-start gap-3.5 rounded-xl border border-graphite-700 bg-graphite-900 p-4 shadow-panel transition-all hover:border-graphite-600 hover:bg-graphite-850/60 group"
+              className="flex items-start gap-3.5 rounded-xl border border-graphite-750 bg-graphite-900/90 p-4 shadow-panel transition-all hover:border-graphite-600 hover:bg-graphite-850/80 group"
             >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400 font-mono text-sm border border-emerald-500/20 group-hover:scale-105 transition-transform">
-                ✓
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400 font-mono text-sm border border-emerald-500/20 group-hover:scale-105 transition-transform shadow-sm">
+                <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path
+                    fillRule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
               </div>
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-mist-100 group-hover:text-emerald-400 transition-colors">

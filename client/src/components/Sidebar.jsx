@@ -92,7 +92,7 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile = () => {} }
                 <span className="font-mono text-sm font-semibold tracking-tight text-mist-100">
                   DevPlatform
                 </span>
-                <span className="rounded bg-amber-400/10 px-1.5 py-0.5 text-[9px] font-mono font-semibold uppercase text-amber-400">
+                <span className="rounded bg-amber-400/10 px-1.5 py-0.5 text-[9px] font-mono font-semibold uppercase text-amber-400 border border-amber-400/20">
                   SaaS
                 </span>
               </div>
@@ -107,7 +107,13 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile = () => {} }
               className="rounded-lg p-1.5 text-mist-400 hover:bg-graphite-800 hover:text-mist-100 md:hidden"
               aria-label="Close navigation"
             >
-              ✕
+              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path
+                  fillRule="evenodd"
+                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                  clipRule="evenodd"
+                />
+              </svg>
             </button>
           )}
         </div>
@@ -123,24 +129,33 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile = () => {} }
               to={item.to}
               end={item.to === '/dashboard'}
               className={({ isActive }) =>
-                `flex items-center gap-3 rounded-lg px-3 py-2.5 text-xs font-medium transition-all ${
+                `flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium transition-all relative ${
                   isActive
-                    ? 'bg-amber-400/10 text-amber-400 border border-amber-400/20 shadow-sm'
-                    : 'text-mist-400 hover:bg-graphite-800 hover:text-mist-100'
+                    ? 'bg-amber-400/10 text-amber-400 border border-amber-400/25 shadow-sm'
+                    : 'text-mist-400 hover:bg-graphite-800/80 hover:text-mist-100 border border-transparent'
                 }`
               }
             >
-              <span className="shrink-0">{item.icon}</span>
-              <span>{item.label}</span>
+              {({ isActive }) => (
+                <>
+                  <span className={`shrink-0 ${isActive ? 'text-amber-400' : 'text-mist-400 group-hover:text-mist-200'}`}>
+                    {item.icon}
+                  </span>
+                  <span className="flex-1">{item.label}</span>
+                  {isActive && (
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shadow-glow-sm" />
+                  )}
+                </>
+              )}
             </NavLink>
           ))}
         </nav>
       </div>
 
       {/* Footer Area: System status & User Profile */}
-      <div className="space-y-3 pt-4 border-t border-graphite-700/80">
+      <div className="space-y-3 pt-4 border-t border-graphite-800">
         {/* Status card */}
-        <div className="rounded-xl border border-graphite-700/80 bg-graphite-800/60 p-3 text-xs">
+        <div className="rounded-xl border border-graphite-750 bg-graphite-850/60 p-3 text-xs">
           <div className="flex items-center justify-between">
             <span className="font-mono text-[10px] uppercase tracking-wide text-mist-400">Platform</span>
             <span className="flex items-center gap-1.5 text-[10px] font-medium text-emerald-400">
@@ -150,7 +165,7 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile = () => {} }
           </div>
           <Link
             to="/dashboard/system-health"
-            className="mt-2 flex items-center justify-between text-[11px] text-mist-300 hover:text-amber-400 transition-colors"
+            className="mt-2 flex items-center justify-between text-[11px] text-mist-300 hover:text-amber-400 transition-colors font-medium"
           >
             <span>Diagnostics &amp; Health</span>
             <span className="text-mist-500">→</span>
@@ -158,9 +173,9 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile = () => {} }
         </div>
 
         {/* User Profile Card */}
-        <div className="flex items-center justify-between rounded-xl border border-graphite-700/80 bg-graphite-800/40 p-2.5">
+        <div className="flex items-center justify-between rounded-xl border border-graphite-750 bg-graphite-850/40 p-2.5">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-graphite-700 font-mono text-xs font-bold text-amber-400 border border-graphite-600">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-graphite-800 font-mono text-xs font-bold text-amber-400 border border-graphite-700">
               {initialsFor(user?.name) || 'U'}
             </div>
             <div className="min-w-0">
@@ -176,7 +191,7 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile = () => {} }
           <button
             onClick={logout}
             title="Log out"
-            className="rounded-lg p-1.5 text-mist-500 hover:bg-graphite-700 hover:text-red-400 transition-colors shrink-0"
+            className="rounded-lg p-1.5 text-mist-500 hover:bg-graphite-800 hover:text-rose-400 transition-colors shrink-0"
             aria-label="Log out"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -193,7 +208,7 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile = () => {} }
   return (
     <>
       {/* Desktop static sidebar */}
-      <aside className="hidden w-64 shrink-0 border-r border-graphite-700 bg-graphite-900 px-4 py-6 md:flex md:flex-col">
+      <aside className="hidden w-64 shrink-0 border-r border-graphite-800 bg-graphite-900/95 px-4 py-6 md:flex md:flex-col">
         {sidebarContent}
       </aside>
 
@@ -205,7 +220,7 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile = () => {} }
             onClick={onCloseMobile}
             aria-hidden="true"
           />
-          <div className="relative z-10 flex h-full w-72 flex-col border-r border-graphite-700 bg-graphite-900 p-5 shadow-2xl animate-fade-in">
+          <div className="relative z-10 flex h-full w-72 flex-col border-r border-graphite-750 bg-graphite-900 p-5 shadow-2xl animate-fade-in">
             {sidebarContent}
           </div>
         </div>

@@ -29,7 +29,7 @@ export default function AuthLayout() {
       <div className="relative hidden w-1/2 overflow-hidden border-l border-graphite-800 bg-graphite-900 lg:flex lg:flex-col lg:justify-between p-12">
         {/* Subtle grid background */}
         <div
-          className="absolute inset-0 opacity-[0.05] pointer-events-none"
+          className="absolute inset-0 opacity-[0.04] pointer-events-none"
           style={{
             backgroundImage:
               'linear-gradient(#F59E0B 1px, transparent 1px), linear-gradient(90deg, #F59E0B 1px, transparent 1px)',
@@ -58,22 +58,22 @@ export default function AuthLayout() {
 
           {/* Feature Badges */}
           <div className="grid grid-cols-2 gap-3 pt-2 font-mono text-xs">
-            <div className="rounded-xl border border-graphite-700 bg-graphite-850/80 p-3.5 shadow-sm">
+            <div className="rounded-xl border border-graphite-750 bg-graphite-850/80 p-3.5 shadow-sm">
               <p className="text-amber-400 font-semibold">Gemini 2.5 Flash</p>
               <p className="text-mist-500 text-[11px] mt-0.5">AST static &amp; semantic scan</p>
             </div>
 
-            <div className="rounded-xl border border-graphite-700 bg-graphite-850/80 p-3.5 shadow-sm">
+            <div className="rounded-xl border border-graphite-750 bg-graphite-850/80 p-3.5 shadow-sm">
               <p className="text-emerald-400 font-semibold">One-Click Fixes</p>
               <p className="text-mist-500 text-[11px] mt-0.5">Git branch &amp; PR generation</p>
             </div>
 
-            <div className="rounded-xl border border-graphite-700 bg-graphite-850/80 p-3.5 shadow-sm">
+            <div className="rounded-xl border border-graphite-750 bg-graphite-850/80 p-3.5 shadow-sm">
               <p className="text-sky-400 font-semibold">Codebase Chat</p>
               <p className="text-mist-500 text-[11px] mt-0.5">Context-aware AI assistant</p>
             </div>
 
-            <div className="rounded-xl border border-graphite-700 bg-graphite-850/80 p-3.5 shadow-sm">
+            <div className="rounded-xl border border-graphite-750 bg-graphite-850/80 p-3.5 shadow-sm">
               <p className="text-purple-400 font-semibold">Force Graph 2D</p>
               <p className="text-mist-500 text-[11px] mt-0.5">Module dependency topology</p>
             </div>

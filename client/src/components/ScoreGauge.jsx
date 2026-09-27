@@ -6,8 +6,8 @@ function scoreDetails(score) {
   return { color: '#EF4444', label: 'Critical Debt', grade: 'D' };
 }
 
-export default function ScoreGauge({ score, size = 136 }) {
-  const radius = (size - 14) / 2;
+export default function ScoreGauge({ score, size = 140 }) {
+  const radius = (size - 16) / 2;
   const circumference = 2 * Math.PI * radius;
   const clamped = Math.max(0, Math.min(100, score ?? 0));
   const filled = (clamped / 100) * circumference;
@@ -45,7 +45,7 @@ export default function ScoreGauge({ score, size = 136 }) {
             transform={`rotate(-90 ${size / 2} ${size / 2})`}
             className="transition-all duration-700 ease-out"
           />
-          {/* Score text */}
+          {/* Score number */}
           <text
             x="50%"
             y="46%"
@@ -75,7 +75,7 @@ export default function ScoreGauge({ score, size = 136 }) {
 
       <div className="mt-3 flex items-center gap-1.5">
         <span
-          className="h-2 w-2 rounded-full"
+          className="h-2 w-2 rounded-full shadow-sm"
           style={{ backgroundColor: color }}
         />
         <span className="font-mono text-xs font-semibold text-mist-200">

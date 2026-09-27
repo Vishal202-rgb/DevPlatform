@@ -40,7 +40,7 @@ export default function SharedAnalysis() {
                 <span className="font-mono text-sm font-semibold tracking-tight text-mist-100">
                   DevPlatform
                 </span>
-                <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-mono text-emerald-400">
+                <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-mono text-emerald-400 font-semibold">
                   Verified Audit
                 </span>
               </div>
@@ -54,7 +54,7 @@ export default function SharedAnalysis() {
             </span>
             <Link
               to="/login"
-              className="rounded-lg bg-amber-400 px-3.5 py-1.5 text-xs font-semibold text-graphite-950 hover:bg-amber-500 transition-colors shadow-sm"
+              className="rounded-lg bg-amber-400 px-4 py-2 text-xs font-semibold text-graphite-950 hover:bg-amber-300 transition-colors shadow-sm"
             >
               Sign In to DevPlatform
             </Link>
@@ -63,12 +63,17 @@ export default function SharedAnalysis() {
 
         {isLoading ? (
           <div className="space-y-6">
-            <div className="h-44 rounded-xl skeleton-shimmer" />
-            <div className="h-64 rounded-xl skeleton-shimmer" />
+            <div className="h-44 rounded-2xl skeleton-shimmer" />
+            <div className="h-64 rounded-2xl skeleton-shimmer" />
           </div>
         ) : error ? (
           <EmptyState
-            icon="🔒"
+            icon={
+              <svg className="h-6 w-6 text-rose-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+            }
             title="Unable to Access Shared Report"
             description={error}
             actionLabel="Go to DevPlatform"
@@ -78,7 +83,7 @@ export default function SharedAnalysis() {
         ) : report ? (
           <main className="space-y-6 animate-fade-in">
             {/* Repository Info Title */}
-            <div className="rounded-xl border border-graphite-700 bg-graphite-900 p-6 shadow-panel">
+            <div className="rounded-2xl border border-graphite-750 bg-graphite-900/90 p-6 shadow-panel">
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                 <div>
                   <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-amber-400">

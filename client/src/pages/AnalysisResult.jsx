@@ -133,7 +133,6 @@ export default function AnalysisResult() {
     } catch (err) {
       // If 409, an analysis is ALREADY genuinely running on the backend
       if (err.response?.status === 409) {
-        // Do not fail or show error toast; attach to the active running job and continue polling
         setError('');
         setIsRunning(true);
         setStatusMessage('An analysis is already in progress. Waiting for completion…');
@@ -311,46 +310,52 @@ export default function AnalysisResult() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-8">
       {/* Header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-graphite-800 pb-5">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-mist-100">
+          <div className="flex items-center gap-2 text-[11px] font-mono text-mist-400">
+            <span>Code Review</span>
+            <span>/</span>
+            <span className="text-amber-400 font-semibold">Audit Report</span>
+          </div>
+          <div className="flex items-center gap-2.5 mt-1">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-mist-100">
               Code Analysis Report
             </h1>
             {analysis?.model && (
-              <span className="rounded-full border border-graphite-700 bg-graphite-800 px-2 py-0.5 text-[10px] font-mono text-mist-400">
+              <span className="rounded-full border border-graphite-700 bg-graphite-800 px-2.5 py-0.5 text-[10px] font-mono text-mist-300">
                 {analysis.model}
               </span>
             )}
           </div>
           <p className="mt-1 text-xs sm:text-sm text-mist-400">
-            Automated AST code review with vulnerability detection and automated refactoring.
+            Automated AST code review with vulnerability detection, suggested diffs, and regression test generation.
           </p>
         </div>
 
         <div className="flex items-center gap-3">
           <Link
             to="/dashboard/repositories"
-            className="text-xs font-mono text-mist-400 hover:text-amber-400 transition-colors"
+            className="text-xs font-mono text-mist-400 hover:text-amber-400 transition-colors flex items-center gap-1.5"
           >
-            ← Back to repositories
+            <span>←</span>
+            <span>Back to repositories</span>
           </Link>
         </div>
       </div>
 
       {/* Error notification banner */}
       {error && !isRunning && (
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-xs sm:text-sm text-red-300 animate-fade-in">
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-red-400 shrink-0" />
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs sm:text-sm text-rose-300 animate-fade-in font-mono">
+          <div className="flex items-center gap-2.5">
+            <span className="h-2 w-2 rounded-full bg-rose-400 shrink-0" />
             <span className="font-medium">{error}</span>
           </div>
           <button
             onClick={handleRun}
             disabled={isRunning}
-            className="self-start sm:self-auto rounded-lg bg-amber-400 px-3.5 py-1.5 text-xs font-semibold text-graphite-950 transition-colors hover:bg-amber-500 disabled:opacity-50 shadow-sm active:scale-95"
+            className="self-start sm:self-auto rounded-lg bg-amber-400 px-3.5 py-1.5 text-xs font-semibold text-graphite-950 transition-colors hover:bg-amber-300 disabled:opacity-50 shadow-sm active:scale-95"
           >
             Try Again
           </button>
@@ -359,29 +364,35 @@ export default function AnalysisResult() {
 
       {/* Running State */}
       {isRunning ? (
-        <div className="rounded-xl border border-graphite-700 bg-graphite-900/90 p-10 text-center shadow-panel animate-fade-in space-y-4">
-          <div className="relative mx-auto h-12 w-12 flex items-center justify-center">
+        <div className="rounded-2xl border border-graphite-750 bg-graphite-900/90 p-10 text-center shadow-panel animate-fade-in space-y-4">
+          <div className="relative mx-auto h-14 w-14 flex items-center justify-center">
             <div className="absolute inset-0 rounded-full border-2 border-amber-400/20 border-t-amber-400 animate-spin" />
-            <span className="text-lg">⚡</span>
+            <svg className="h-5 w-5 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="currentColor" />
+            </svg>
           </div>
           <div>
-            <p className="font-mono text-sm font-semibold text-amber-400">{statusMessage}</p>
+            <p className="font-mono text-sm sm:text-base font-semibold text-amber-400">{statusMessage}</p>
             <p className="mx-auto mt-2 max-w-lg text-xs sm:text-sm text-mist-400 leading-relaxed">
               {statusSubtext}
             </p>
           </div>
-          <div className="w-48 mx-auto h-1 rounded-full bg-graphite-800 overflow-hidden">
+          <div className="w-56 mx-auto h-1 rounded-full bg-graphite-800 overflow-hidden">
             <div className="h-full bg-amber-400 animate-pulse w-full" />
           </div>
         </div>
       ) : isLoading ? (
         <div className="space-y-6">
-          <div className="h-44 rounded-xl skeleton-shimmer" />
-          <div className="h-64 rounded-xl skeleton-shimmer" />
+          <div className="h-44 rounded-2xl skeleton-shimmer" />
+          <div className="h-64 rounded-2xl skeleton-shimmer" />
         </div>
       ) : notFound ? (
         <EmptyState
-          icon="⚡"
+          icon={
+            <svg className="h-6 w-6 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="currentColor" />
+            </svg>
+          }
           title="No analysis run yet for this repository"
           description="Initiate an automated AI code audit to scan for vulnerabilities, bugs, code smells, and performance regressions."
           actionLabel="Run First Analysis"
@@ -390,7 +401,7 @@ export default function AnalysisResult() {
       ) : analysis ? (
         <div className="space-y-6 animate-fade-in">
           {/* Overview Hero Card: Gauge + Meta + Share */}
-          <div className="overflow-hidden rounded-xl border border-graphite-700 bg-graphite-900 p-6 shadow-panel">
+          <div className="overflow-hidden rounded-2xl border border-graphite-750 bg-graphite-900/90 p-6 shadow-panel">
             <div className="flex flex-col items-center gap-6 lg:flex-row lg:items-start">
               {/* Score Gauge */}
               <div className="shrink-0 p-2">
@@ -421,9 +432,11 @@ export default function AnalysisResult() {
                     <button
                       onClick={handleRun}
                       disabled={isRunning}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-graphite-600 bg-graphite-800 px-3.5 py-1.5 text-xs font-semibold text-mist-100 transition-colors hover:border-amber-400/50 hover:text-amber-400 disabled:opacity-50 active:scale-95"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-graphite-700 bg-graphite-800 px-3.5 py-1.5 text-xs font-semibold text-mist-100 transition-colors hover:border-amber-400/50 hover:text-amber-400 disabled:opacity-50 active:scale-95"
                     >
-                      <span>⟳</span>
+                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+                      </svg>
                       <span>Re-run Analysis</span>
                     </button>
                   </div>
@@ -432,7 +445,7 @@ export default function AnalysisResult() {
                 {/* Severity Breakdown Cards */}
                 <div>
                   <p className="mb-2 text-[11px] font-mono font-medium uppercase tracking-wider text-mist-400">
-                    Severity Distribution (Click to filter)
+                    Severity Distribution (Click card to filter)
                   </p>
                   <SeveritySummary
                     summary={analysis.summary}
@@ -442,14 +455,14 @@ export default function AnalysisResult() {
                 </div>
 
                 {/* Public Share Panel */}
-                <div className="border-t border-graphite-800/80 pt-4">
+                <div className="border-t border-graphite-800 pt-4">
                   {shareUrl ? (
-                    <div className="space-y-2 rounded-xl border border-graphite-700/80 bg-graphite-950/60 p-3.5">
+                    <div className="space-y-2 rounded-xl border border-graphite-750 bg-graphite-950/70 p-3.5">
                       <div className="flex items-center justify-between">
                         <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-amber-400">
                           Public Share Link Enabled
                         </span>
-                        <span className="text-[10px] text-mist-500">Read-only view</span>
+                        <span className="text-[10px] text-mist-500 font-mono">Read-only view</span>
                       </div>
 
                       <div className="flex flex-wrap items-center gap-2">
@@ -461,42 +474,42 @@ export default function AnalysisResult() {
                         />
                         <button
                           onClick={handleCopyLink}
-                          className="rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-semibold text-graphite-950 transition-colors hover:bg-amber-500 shadow-sm"
+                          className="rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-semibold text-graphite-950 transition-colors hover:bg-amber-300 shadow-sm"
                         >
                           {copied ? 'Copied ✓' : 'Copy Link'}
                         </button>
                         <button
                           onClick={handleUnshare}
                           disabled={isSharing}
-                          className="rounded-lg border border-graphite-700 bg-graphite-800 px-3 py-1.5 text-xs text-mist-400 transition-colors hover:border-red-500/40 hover:text-red-400 disabled:opacity-50"
+                          className="rounded-lg border border-graphite-700 bg-graphite-800 px-3 py-1.5 text-xs text-mist-400 transition-colors hover:border-rose-500/40 hover:text-rose-400 disabled:opacity-50"
                         >
                           {isSharing ? 'Revoking…' : 'Revoke'}
                         </button>
                       </div>
 
                       <p className="text-[11px] text-mist-500">
-                        Anyone with this link can view this code report without logging in. Fix actions remain protected.
+                        Anyone with this link can view this code review without logging in. Refactoring actions remain protected.
                       </p>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                       <div>
-                        <p className="text-xs font-medium text-mist-200">Share this report</p>
-                        <p className="text-[11px] text-mist-500">
+                        <p className="text-xs font-semibold text-mist-200">Share this audit report</p>
+                        <p className="text-[11px] text-mist-400">
                           Create a public, view-only URL to share findings with team members or clients.
                         </p>
                       </div>
                       <button
                         onClick={handleShare}
                         disabled={isSharing}
-                        className="rounded-lg border border-graphite-600 bg-graphite-800 px-3 py-1.5 text-xs font-medium text-mist-200 transition-colors hover:border-amber-400/50 hover:text-amber-400 disabled:opacity-50"
+                        className="self-start sm:self-auto rounded-lg border border-graphite-700 bg-graphite-800 px-3.5 py-1.5 text-xs font-semibold text-mist-200 transition-colors hover:border-amber-400/50 hover:text-amber-400 disabled:opacity-50"
                       >
                         {isSharing ? 'Generating Link…' : 'Create Share Link'}
                       </button>
                     </div>
                   )}
                   {shareError && (
-                    <p className="mt-2 text-xs text-red-400 font-mono">{shareError}</p>
+                    <p className="mt-2 text-xs text-rose-400 font-mono">{shareError}</p>
                   )}
                 </div>
               </div>
@@ -507,7 +520,7 @@ export default function AnalysisResult() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold uppercase tracking-wider text-mist-400 font-mono">
-                Detected Issues &amp; AI Recommendations
+                Detected Issues &amp; AI Recommendations ({analysis.issues?.length || 0})
               </h2>
               {activeSeverityFilter !== 'all' && (
                 <button
