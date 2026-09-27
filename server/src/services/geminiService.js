@@ -506,6 +506,76 @@ const chatWithContext = async (repoLabel, files, message, history = [], onStatus
   return { reply };
 };
 
+const MODE_INSTRUCTIONS = {
+  general: `You are an expert full-stack software engineer and AI assistant in DevMind.
+Answer the user's software engineering questions clearly, accurately, and concisely. When repository code context is provided, reference it accurately.`,
+  codebase: `You are an expert codebase intelligence assistant in DevMind.
+You are provided with verified semantic code chunks from the user's repository.
+CRITICAL RULES:
+- Base your answers strictly on the provided repository code chunks.
+- If the question cannot be answered from the provided code context, state clearly: "I couldn't find enough evidence in the repository."
+- Cite exact file paths and line ranges (e.g. \`controllers/authController.js:42-71\`) for all claims.
+- Do NOT hallucinate or guess file paths not in the evidence.
+- At the end of your response, provide 2 or 3 suggested follow-up questions formatted as an unordered list under the heading "### Suggested Follow-ups".`,
+  architecture: `You are a principal software architect assistant in DevMind.
+Focus on high-level system design, module boundaries, component hierarchy, circular dependencies, and data flow.
+Reference the provided architecture graph nodes and code chunks.
+At the end of your response, provide 2 or 3 suggested follow-up questions under "### Suggested Follow-ups".`,
+  security: `You are a cybersecurity intelligence specialist in DevMind.
+Analyze code for vulnerabilities, OWASP Top 10, authentication bypasses, insecure configs, and injection risks.
+CRITICAL: Never reveal real secret values in plain text; always mask credentials as ********.
+At the end of your response, provide 2 or 3 suggested follow-up questions under "### Suggested Follow-ups".`,
+  debugging: `You are a root-cause debugging and runtime troubleshooting assistant in DevMind.
+Analyze error handling, call stacks, race conditions, edge case failures, and null pointer risks.
+Provide concrete code fixes with explanation.
+At the end of your response, provide 2 or 3 suggested follow-up questions under "### Suggested Follow-ups".`,
+};
+
+const chatWithRAG = async (repoLabel, contextText, message, mode = 'codebase', history = [], onStatusUpdate) => {
+  if (!env.geminiApiKey) {
+    throw new ApiError(500, 'Gemini is not configured on the server (missing GEMINI_API_KEY).');
+  }
+
+  const systemInstruction = MODE_INSTRUCTIONS[mode] || MODE_INSTRUCTIONS.codebase;
+
+  const fullPrompt = `Repository: ${repoLabel}
+Mode: ${mode.toUpperCase()}
+
+Repository Context & Evidence:
+${contextText || '(No specific repository code chunks matched this query)'}
+
+User Question: ${message}`;
+
+  const contents = [
+    ...history.map((msg) => ({
+      role: msg.role === 'user' ? 'user' : 'model',
+      parts: [{ text: msg.content }],
+    })),
+    { role: 'user', parts: [{ text: fullPrompt }] },
+  ];
+
+  const { response } = await callGeminiWithRetryAndFallback(
+    (_model) => ({
+      systemInstruction: { role: 'system', parts: [{ text: systemInstruction }] },
+      contents,
+      generationConfig: {
+        temperature: mode === 'debugging' || mode === 'security' ? 0.1 : 0.2,
+        maxOutputTokens: 8192,
+      },
+    }),
+    { onStatusUpdate }
+  );
+
+  const candidate = response.data?.candidates?.[0];
+  const reply = candidate?.content?.parts?.map((p) => p.text).join('') || '';
+
+  if (!reply) {
+    throw new ApiError(502, `Gemini returned no response (finishReason: ${candidate?.finishReason || 'unknown'}).`);
+  }
+
+  return { reply };
+};
+
 const TEST_SYSTEM_INSTRUCTION = `You are a precise code-testing assistant.
 You will be given the full current contents of one source file and a description of ONE specific issue found in it.
 Generate a comprehensive test file for this file, including normal cases, edge cases, invalid inputs, and error cases where applicable.
@@ -724,6 +794,7 @@ module.exports = {
   generateFixedFile,
   findRelevantFiles,
   chatWithContext,
+  chatWithRAG,
   generateTests,
   generateArchitectureGraph,
   generatePullRequestDetails,

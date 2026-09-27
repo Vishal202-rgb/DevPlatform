@@ -4,28 +4,31 @@ import ForceGraph2D from 'react-force-graph-2d';
 import api from '../services/api';
 import EmptyState from '../components/EmptyState';
 import { useToast } from '../hooks/useToast';
+import { fetchGithubRepositories } from '../services/githubService';
 
 const CATEGORIES = [
   { id: 'all', label: 'All Modules', color: '#F5B942' },
-  { id: 'routes', label: 'Routes / API', color: '#38BDF8' },
+  { id: 'routes', label: 'Routes', color: '#38BDF8' },
   { id: 'controllers', label: 'Controllers', color: '#818CF8' },
-  { id: 'services', label: 'Services / Core', color: '#F59E0B' },
-  { id: 'models', label: 'Models / DB', color: '#10B981' },
+  { id: 'services', label: 'Services', color: '#F59E0B' },
+  { id: 'models', label: 'Models', color: '#10B981' },
+  { id: 'components', label: 'Components', color: '#F97316' },
   { id: 'middleware', label: 'Middleware', color: '#A855F7' },
-  { id: 'components', label: 'Components / UI', color: '#F97316' },
-  { id: 'config', label: 'Config / Setup', color: '#06B6D4' },
-  { id: 'dependencies', label: 'Dependencies', color: '#EC4899' },
+  { id: 'config', label: 'Config', color: '#06B6D4' },
   { id: 'utils', label: 'Utilities', color: '#94A3B8' },
+  { id: 'dependencies', label: 'Dependencies', color: '#EC4899' },
 ];
 
 export default function Architecture() {
-  const { repositoryId } = useParams();
+  const { repositoryId: urlRepoId } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
 
+  const [connectedRepos, setConnectedRepos] = useState([]);
+  const [activeRepoId, setActiveRepoId] = useState(urlRepoId || '');
   const [repository, setRepository] = useState(null);
   const [graphData, setGraphData] = useState(null);
-  const [summary, setSummary] = useState(null);
+  const [_summary, setSummary] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisStage, setAnalysisStage] = useState('Parsing repository files...');
@@ -34,6 +37,8 @@ export default function Architecture() {
   const [hoveredNode, setHoveredNode] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [showDependencies, setShowDependencies] = useState(true);
+  const [showSummaryPanel, setShowSummaryPanel] = useState(true);
   const [showLegend, setShowLegend] = useState(true);
   const [isPhysicsPaused, setIsPhysicsPaused] = useState(false);
   const [copiedPath, setCopiedPath] = useState(false);
@@ -60,12 +65,34 @@ export default function Architecture() {
     return () => observer.disconnect();
   }, []);
 
+  // Fetch connected repos if no repo ID is in params
+  useEffect(() => {
+    if (!urlRepoId) {
+      fetchGithubRepositories()
+        .then((data) => {
+          const connected = (data || []).filter((r) => r.connected);
+          setConnectedRepos(connected);
+          if (connected.length > 0 && !activeRepoId) {
+            setActiveRepoId(connected[0].repositoryId || connected[0]._id);
+          }
+        })
+        .catch(() => {});
+    } else {
+      setActiveRepoId(urlRepoId);
+    }
+  }, [urlRepoId, activeRepoId]);
+
   const loadGraph = useCallback(async () => {
+    if (!activeRepoId) {
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     setError('');
     setSelectedNode(null);
     try {
-      const { data } = await api.get(`/architecture/${repositoryId}`);
+      const { data } = await api.get(`/architecture/${activeRepoId}`);
       if (data.data?.repository) {
         setRepository(data.data.repository);
       }
@@ -83,13 +110,14 @@ export default function Architecture() {
     } finally {
       setIsLoading(false);
     }
-  }, [repositoryId]);
+  }, [activeRepoId]);
 
   useEffect(() => {
     loadGraph();
   }, [loadGraph]);
 
   const handleAnalyze = async () => {
+    if (!activeRepoId) return;
     setIsAnalyzing(true);
     setError('');
     setSelectedNode(null);
@@ -104,7 +132,7 @@ export default function Architecture() {
     }, 3500);
 
     try {
-      const { data } = await api.post(`/architecture/${repositoryId}/analyze`);
+      const { data } = await api.post(`/architecture/${activeRepoId}/analyze`);
       setGraphData(data.data.graph);
       setSummary(data.data.summary || data.data.graph.summary || null);
       if (data.data.repository) {
@@ -126,12 +154,31 @@ export default function Architecture() {
     }
   };
 
+  // Filter graphData nodes & links based on dependencies toggle
+  const activeGraphData = useMemo(() => {
+    if (!graphData?.nodes) return { nodes: [], links: [] };
+
+    let nodes = graphData.nodes;
+    if (!showDependencies) {
+      nodes = nodes.filter((n) => n.category !== 'dependencies' && n.type !== 'dependencies');
+    }
+
+    const nodeIds = new Set(nodes.map((n) => n.id));
+    const links = (graphData.links || []).filter((l) => {
+      const src = typeof l.source === 'object' ? l.source.id : l.source;
+      const tgt = typeof l.target === 'object' ? l.target.id : l.target;
+      return nodeIds.has(src) && nodeIds.has(tgt);
+    });
+
+    return { nodes, links };
+  }, [graphData, showDependencies]);
+
   // Find neighbors of a node for highlighting
   const neighborsMap = useMemo(() => {
-    if (!graphData?.links) return new Map();
+    if (!activeGraphData?.links) return new Map();
     const map = new Map();
 
-    graphData.links.forEach((link) => {
+    activeGraphData.links.forEach((link) => {
       const src = typeof link.source === 'object' ? link.source.id : link.source;
       const tgt = typeof link.target === 'object' ? link.target.id : link.target;
 
@@ -143,20 +190,20 @@ export default function Architecture() {
     });
 
     return map;
-  }, [graphData]);
+  }, [activeGraphData]);
 
   // Compute incoming and outgoing connections for the selected node
   const selectedNodeConnections = useMemo(() => {
-    if (!selectedNode || !graphData?.links || !graphData?.nodes) {
+    if (!selectedNode || !activeGraphData?.links || !activeGraphData?.nodes) {
       return { incoming: [], outgoing: [] };
     }
     const nodeId = selectedNode.id;
-    const nodesById = new Map(graphData.nodes.map((n) => [n.id, n]));
+    const nodesById = new Map(activeGraphData.nodes.map((n) => [n.id, n]));
 
     const incoming = [];
     const outgoing = [];
 
-    graphData.links.forEach((l) => {
+    activeGraphData.links.forEach((l) => {
       const sourceId = typeof l.source === 'object' ? l.source.id : l.source;
       const targetId = typeof l.target === 'object' ? l.target.id : l.target;
 
@@ -171,7 +218,59 @@ export default function Architecture() {
     });
 
     return { incoming, outgoing };
-  }, [selectedNode, graphData]);
+  }, [selectedNode, activeGraphData]);
+
+  // DERIVED ARCHITECTURE SUMMARY: Most Connected Modules & Bottlenecks
+  const architectureMetrics = useMemo(() => {
+    if (!graphData?.nodes?.length || !graphData?.links?.length) {
+      return {
+        totalFiles: graphData?.nodes?.length || 0,
+        totalDependencies: graphData?.links?.length || 0,
+        mostConnected: [],
+        potentialBottlenecks: [],
+      };
+    }
+
+    const inDegreeMap = new Map();
+    const outDegreeMap = new Map();
+
+    graphData.links.forEach((l) => {
+      const src = typeof l.source === 'object' ? l.source.id : l.source;
+      const tgt = typeof l.target === 'object' ? l.target.id : l.target;
+
+      outDegreeMap.set(src, (outDegreeMap.get(src) || 0) + 1);
+      inDegreeMap.set(tgt, (inDegreeMap.get(tgt) || 0) + 1);
+    });
+
+    const enriched = graphData.nodes.map((n) => ({
+      id: n.id,
+      name: n.name || n.id,
+      path: n.path,
+      category: n.category || n.type || 'misc',
+      color: n.color,
+      inDegree: inDegreeMap.get(n.id) || 0,
+      outDegree: outDegreeMap.get(n.id) || 0,
+      totalCoupling: (inDegreeMap.get(n.id) || 0) + (outDegreeMap.get(n.id) || 0),
+    }));
+
+    // Most connected (highest total in + out)
+    const mostConnected = [...enriched]
+      .sort((a, b) => b.totalCoupling - a.totalCoupling)
+      .slice(0, 3);
+
+    // Potential bottlenecks (highest in-degree dependents)
+    const potentialBottlenecks = [...enriched]
+      .filter((n) => n.inDegree >= 3)
+      .sort((a, b) => b.inDegree - a.inDegree)
+      .slice(0, 3);
+
+    return {
+      totalFiles: graphData.nodes.length,
+      totalDependencies: graphData.links.length,
+      mostConnected,
+      potentialBottlenecks,
+    };
+  }, [graphData]);
 
   const handleNodeClick = useCallback((node) => {
     setSelectedNode(node);
@@ -182,8 +281,8 @@ export default function Architecture() {
   }, []);
 
   const handleSelectConnectedNode = (targetId) => {
-    if (!graphData?.nodes) return;
-    const target = graphData.nodes.find((n) => n.id === targetId);
+    if (!activeGraphData?.nodes) return;
+    const target = activeGraphData.nodes.find((n) => n.id === targetId);
     if (target) {
       handleNodeClick(target);
     }
@@ -214,6 +313,7 @@ export default function Architecture() {
     setSelectedCategory('all');
     setSelectedNode(null);
     setHoveredNode(null);
+    setShowDependencies(true);
     handleFit();
   };
 
@@ -237,32 +337,14 @@ export default function Architecture() {
   };
 
   const handleAskAI = (node) => {
-    const query = `Explain the architecture, responsibilities, and dependencies of the \`${node.path || node.name}\` module in this codebase.`;
-    navigate(`/dashboard/repositories/${repositoryId}/chat`, {
+    const targetRepoId = activeRepoId || urlRepoId;
+    const query = node
+      ? `Explain the architecture, responsibilities, and dependencies of the \`${node.path || node.name}\` module in this codebase.`
+      : `Explain the overall modular architecture, core entry points, and structural patterns of this codebase.`;
+    navigate(`/dashboard/repositories/${targetRepoId}/chat`, {
       state: { initialMessage: query },
     });
   };
-
-  // Filter and search active match counts
-  const filteredNodes = useMemo(() => {
-    if (!graphData?.nodes) return [];
-    return graphData.nodes.filter((node) => {
-      const matchesCategory =
-        selectedCategory === 'all' ||
-        node.category === selectedCategory ||
-        node.type === selectedCategory;
-
-      const q = searchQuery.trim().toLowerCase();
-      const matchesSearch =
-        !q ||
-        node.name?.toLowerCase().includes(q) ||
-        node.id?.toLowerCase().includes(q) ||
-        node.path?.toLowerCase().includes(q) ||
-        node.category?.toLowerCase().includes(q);
-
-      return matchesCategory && matchesSearch;
-    });
-  }, [graphData, selectedCategory, searchQuery]);
 
   // Custom Node Canvas Renderer
   const drawNode = useCallback(
@@ -410,8 +492,23 @@ export default function Architecture() {
                 <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
                 <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
               </svg>
-              <span>{repository?.fullName || repository?.name || 'Architecture Graph'}</span>
+              <span>{repository?.fullName || repository?.name || 'Architecture Visualization'}</span>
             </h1>
+
+            {/* Standalone Repo Switcher Dropdown */}
+            {connectedRepos.length > 1 && !urlRepoId && (
+              <select
+                value={activeRepoId}
+                onChange={(e) => setActiveRepoId(e.target.value)}
+                className="rounded-lg border border-graphite-750 bg-graphite-850 px-2.5 py-1 text-xs font-mono text-mist-200 outline-none focus:border-amber-400 ml-1"
+              >
+                {connectedRepos.map((r) => (
+                  <option key={r.repositoryId || r.githubId} value={r.repositoryId || r._id}>
+                    {r.fullName || r.name}
+                  </option>
+                ))}
+              </select>
+            )}
 
             {repository?.defaultBranch && (
               <span className="rounded-full border border-graphite-700 bg-graphite-800 px-2 py-0.5 text-[10px] font-mono text-mist-300">
@@ -421,31 +518,32 @@ export default function Architecture() {
 
             {graphData?.nodes && (
               <span className="rounded-full border border-amber-400/30 bg-amber-400/10 px-2.5 py-0.5 text-[10px] font-mono text-amber-400 font-semibold">
-                {graphData.nodes.length} modules · {graphData.links?.length || 0} links
+                {activeGraphData.nodes.length} modules · {activeGraphData.links.length} links
               </span>
             )}
           </div>
           <p className="text-xs text-mist-400 mt-1">
-            Interactive module dependency graph derived from actual repository code, routes, controllers, and imports.
+            Force-directed modular dependency graph mapped from route definitions, controllers, models, and imports.
           </p>
         </div>
 
         {/* Action Controls */}
         <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          {/* Explain with AI Action */}
           <button
-            onClick={() => navigate(`/dashboard/repositories/${repositoryId}/chat`)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-graphite-750 bg-graphite-850 px-3 py-1.5 text-xs font-medium text-mist-200 hover:border-sky-400/40 hover:bg-graphite-800 hover:text-sky-300 transition-colors"
-            title="Ask AI questions about repository architecture"
+            onClick={() => handleAskAI(selectedNode)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-sky-400/30 bg-sky-500/10 px-3 py-1.5 text-xs font-semibold text-sky-300 hover:bg-sky-500/20 transition-colors shadow-sm"
+            title="Explain repository architecture with AI"
           >
-            <svg className="h-3.5 w-3.5 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
             </svg>
-            <span>Ask AI</span>
+            <span>Explain with AI</span>
           </button>
 
           <button
             onClick={handleAnalyze}
-            disabled={isAnalyzing}
+            disabled={isAnalyzing || !activeRepoId}
             className="inline-flex items-center gap-1.5 rounded-lg bg-amber-400 px-3.5 py-1.5 text-xs font-semibold text-graphite-950 transition-all hover:bg-amber-300 disabled:opacity-50 active:scale-95 shadow-sm"
             title="Re-scan codebase and rebuild architecture graph"
           >
@@ -488,7 +586,7 @@ export default function Architecture() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Filter by module, path, or category…"
+              placeholder="Search module, file path, or category…"
               className="w-full rounded-lg border border-graphite-750 bg-graphite-950 px-3 py-1.5 pl-8 text-xs text-mist-100 placeholder:text-mist-500 focus:border-amber-400 outline-none transition-colors"
             />
             <svg
@@ -512,15 +610,35 @@ export default function Architecture() {
             )}
           </div>
 
+          {/* Controls: Dependencies Toggle & Summary Toggle */}
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <button
+              onClick={() => setShowDependencies(!showDependencies)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-mono transition-colors border ${
+                showDependencies
+                  ? 'bg-graphite-800 text-mist-200 border-graphite-700'
+                  : 'bg-amber-400/10 text-amber-400 border-amber-400/30 font-semibold'
+              }`}
+              title="Toggle third-party external package nodes"
+            >
+              {showDependencies ? '📦 Dependencies: ON' : '📦 Dependencies: OFF'}
+            </button>
+
+            <button
+              onClick={() => setShowSummaryPanel(!showSummaryPanel)}
+              className="px-2.5 py-1 rounded-lg text-xs font-mono bg-graphite-800 text-mist-300 border border-graphite-700 hover:text-mist-100"
+            >
+              {showSummaryPanel ? 'Hide Summary' : 'Show Summary'}
+            </button>
+          </div>
+
           {/* Category Filter Chips */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 text-xs scrollbar-thin">
             {CATEGORIES.map((cat) => {
               const count =
                 cat.id === 'all'
-                  ? graphData?.nodes?.length || 0
-                  : summary?.categories?.[cat.id] ||
-                    graphData?.nodes?.filter((n) => n.category === cat.id || n.type === cat.id).length ||
-                    0;
+                  ? activeGraphData.nodes.length
+                  : activeGraphData.nodes.filter((n) => n.category === cat.id || n.type === cat.id).length;
 
               if (cat.id !== 'all' && count === 0) return null;
 
@@ -650,6 +768,39 @@ export default function Architecture() {
                 {isPhysicsPaused ? '▶' : '⏸'}
               </button>
             </div>
+
+            {/* Architecture Summary Bar (Derived Data) */}
+            {showSummaryPanel && (
+              <div className="absolute top-4 left-56 z-20 hidden lg:flex items-center gap-3 rounded-xl border border-graphite-700 bg-graphite-900/90 px-3.5 py-1.5 shadow-2xl backdrop-blur-md text-xs font-mono">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-mist-500">Files:</span>
+                  <span className="font-bold text-mist-100">{architectureMetrics.totalFiles}</span>
+                </div>
+                <span className="text-graphite-700">|</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-mist-500">Dependencies:</span>
+                  <span className="font-bold text-mist-100">{architectureMetrics.totalDependencies}</span>
+                </div>
+                {architectureMetrics.mostConnected.length > 0 && (
+                  <>
+                    <span className="text-graphite-700">|</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-mist-500">Top Connected:</span>
+                      <span className="font-bold text-amber-400">{architectureMetrics.mostConnected[0].name}</span>
+                    </div>
+                  </>
+                )}
+                {architectureMetrics.potentialBottlenecks.length > 0 && (
+                  <>
+                    <span className="text-graphite-700">|</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-rose-400">Bottlenecks:</span>
+                      <span className="font-bold text-rose-400">{architectureMetrics.potentialBottlenecks.length}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
 
             {/* Bottom-left Interactive Legend */}
             <div className="absolute bottom-4 left-4 z-20 hidden sm:block">
@@ -815,7 +966,7 @@ export default function Architecture() {
                       <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                       </svg>
-                      <span>Ask AI about this module</span>
+                      <span>Explain with AI</span>
                     </button>
 
                     {repository?.htmlUrl && selectedNode.path && !selectedNode.path.startsWith('node_modules') && (
@@ -837,7 +988,7 @@ export default function Architecture() {
             {/* 2D Force Graph Canvas */}
             <ForceGraph2D
               ref={fgRef}
-              graphData={graphData}
+              graphData={activeGraphData}
               nodeCanvasObject={drawNode}
               nodePointerAreaPaint={(node, color, ctx) => {
                 const r = Math.max(5, (node.val || 2) * 2);
@@ -863,9 +1014,6 @@ export default function Architecture() {
               d3AlphaDecay={0.02}
               d3VelocityDecay={0.3}
               cooldownTicks={120}
-              onEngineStop={() => {
-                // Ensure nice fit after initial layout settles
-              }}
             />
           </div>
         )}

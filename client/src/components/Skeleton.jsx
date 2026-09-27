@@ -9,10 +9,17 @@ export function Skeleton({ className = '' }) {
 
 export function StatCardSkeleton() {
   return (
-    <div className="rounded-xl border border-graphite-750 bg-graphite-900/90 p-5 shadow-panel">
-      <Skeleton className="h-3 w-24 mb-3" />
-      <Skeleton className="h-8 w-16 mb-2" />
-      <Skeleton className="h-3 w-32" />
+    <div className="flex h-full min-h-[148px] flex-col justify-between rounded-xl border border-graphite-750 bg-graphite-900/90 p-5 shadow-panel">
+      <div>
+        <div className="flex h-6 items-center justify-between gap-2 mb-2.5">
+          <Skeleton className="h-3 w-28" />
+          <Skeleton className="h-4 w-12 rounded-full" />
+        </div>
+        <Skeleton className="h-8 w-24 mt-2" />
+      </div>
+      <div className="pt-2.5 border-t border-graphite-800/80">
+        <Skeleton className="h-3 w-36" />
+      </div>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import RepositoryCard from '../components/RepositoryCard';
 import EmptyState from '../components/EmptyState';
 import { RepositoryCardSkeleton } from '../components/Skeleton';
@@ -18,7 +18,8 @@ export default function Repositories() {
   const [connectingId, setConnectingId] = useState(null);
   const [analyzingId, setAnalyzingId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'connected' | 'public' | 'private'
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'connected' | 'analyzed' | 'public' | 'private'
+  const [selectedRepoOverview, setSelectedRepoOverview] = useState(null);
 
   const loadRepos = async () => {
     setIsLoading(true);
@@ -88,6 +89,8 @@ export default function Repositories() {
 
     if (statusFilter === 'connected') {
       result = result.filter((r) => r.connected);
+    } else if (statusFilter === 'analyzed') {
+      result = result.filter((r) => r.hasAnalysis || r.lastAnalyzedAt);
     } else if (statusFilter === 'public') {
       result = result.filter((r) => !r.private);
     } else if (statusFilter === 'private') {
@@ -102,7 +105,8 @@ export default function Repositories() {
         repo.name?.toLowerCase().includes(query) ||
         repo.fullName?.toLowerCase().includes(query) ||
         repo.description?.toLowerCase().includes(query) ||
-        repo.language?.toLowerCase().includes(query)
+        repo.language?.toLowerCase().includes(query) ||
+        repo.githubOwner?.toLowerCase().includes(query)
       );
     });
   }, [repos, searchQuery, statusFilter]);
@@ -125,12 +129,12 @@ export default function Repositories() {
       <div className="space-y-6">
         <div className="border-b border-graphite-800 pb-5">
           <div className="flex items-center gap-2 text-[11px] font-mono text-mist-400">
-            <span>Codebase</span>
+            <span>Code Intelligence</span>
             <span>/</span>
             <span className="text-amber-400 font-semibold">Repositories</span>
           </div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-mist-100 mt-1">
-            Repositories
+            Repository Catalog
           </h1>
           <p className="mt-1 text-xs sm:text-sm text-mist-400">
             Link your GitHub account to access your public and private repositories.
@@ -144,7 +148,7 @@ export default function Repositories() {
             </svg>
           }
           title="GitHub is not connected"
-          description="Connect your GitHub account to automatically synchronize public and private repositories for AI-powered static analysis, bug remediation, and architecture graphs."
+          description="Connect your GitHub account to automatically synchronize public and private repositories for AI-powered static analysis, bug remediation, test suites, and architecture graphs."
           actionLabel="Connect GitHub Account"
           onAction={connect}
         />
@@ -158,7 +162,7 @@ export default function Repositories() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-graphite-800 pb-5">
         <div>
           <div className="flex items-center gap-2 text-[11px] font-mono text-mist-400">
-            <span>Codebase</span>
+            <span>Code Intelligence</span>
             <span>/</span>
             <span className="text-amber-400 font-semibold">Repository Catalog</span>
           </div>
@@ -166,7 +170,7 @@ export default function Repositories() {
             Repositories
           </h1>
           <p className="mt-1 text-xs sm:text-sm text-mist-400">
-            Select any repository to review AST vulnerabilities, run codebase chat, or visualize module architecture.
+            Select any repository to review AST vulnerabilities, run codebase chat, or visualize modular architecture.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -193,15 +197,9 @@ export default function Repositories() {
       </div>
 
       {error && (
-        <div className="flex items-center justify-between rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs sm:text-sm text-rose-300 animate-fade-in">
-          <div className="flex items-center gap-2 font-mono">
-            <svg className="h-4 w-4 text-rose-400 shrink-0" viewBox="0 0 20 20" fill="currentColor">
-              <path
-                fillRule="evenodd"
-                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                clipRule="evenodd"
-              />
-            </svg>
+        <div className="flex items-center justify-between rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs sm:text-sm text-rose-300 animate-fade-in font-mono">
+          <div className="flex items-center gap-2">
+            <span>⚠️</span>
             <span>{error}</span>
           </div>
           <button
@@ -225,8 +223,6 @@ export default function Repositories() {
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
               >
                 <circle cx="11" cy="11" r="8" />
                 <line x1="21" x2="16.65" y1="21" y2="16.65" />
@@ -235,7 +231,7 @@ export default function Repositories() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by name, description, or language…"
+                placeholder="Search repositories by name, language, owner…"
                 className="w-full rounded-lg border border-graphite-750 bg-graphite-900 py-2 pl-9 pr-9 text-xs sm:text-sm text-mist-100 outline-none transition-colors placeholder:text-mist-500 focus:border-amber-400 focus:bg-graphite-850"
               />
               {searchQuery && (
@@ -244,13 +240,7 @@ export default function Repositories() {
                   aria-label="Clear search"
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-mist-500 hover:text-mist-200"
                 >
-                  <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-                    <path
-                      fillRule="evenodd"
-                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
+                  ✕
                 </button>
               )}
             </div>
@@ -260,6 +250,7 @@ export default function Repositories() {
               {[
                 { id: 'all', label: 'All' },
                 { id: 'connected', label: 'Connected' },
+                { id: 'analyzed', label: 'Analyzed' },
                 { id: 'public', label: 'Public' },
                 { id: 'private', label: 'Private' },
               ].map((tab) => (
@@ -287,7 +278,7 @@ export default function Repositories() {
                 onClick={() => setSearchQuery('')}
                 className="text-amber-400 hover:underline"
               >
-                Reset filter
+                Reset search
               </button>
             )}
           </div>
@@ -330,8 +321,145 @@ export default function Repositories() {
               isConnecting={connectingId === repo.githubId}
               onAnalyze={handleAnalyze}
               isAnalyzing={analyzingId === repo.githubId}
+              onSelectOverview={(r) => setSelectedRepoOverview(r)}
             />
           ))}
+        </div>
+      )}
+
+      {/* Selected Repository Detailed Overview Drawer / Modal */}
+      {selectedRepoOverview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-graphite-950/80 backdrop-blur-sm animate-fade-in">
+          <div className="relative w-full max-w-2xl rounded-2xl border border-graphite-700 bg-graphite-900 p-6 shadow-2xl animate-scale-in space-y-5">
+            {/* Header */}
+            <div className="flex items-start justify-between border-b border-graphite-800 pb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono text-mist-400">
+                    @{selectedRepoOverview.githubOwner || selectedRepoOverview.fullName?.split('/')[0]}
+                  </span>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-mono font-medium uppercase ${
+                      selectedRepoOverview.private
+                        ? 'border border-graphite-700 bg-graphite-800 text-mist-400'
+                        : 'border border-amber-400/20 bg-amber-400/10 text-amber-400'
+                    }`}
+                  >
+                    {selectedRepoOverview.private ? 'Private' : 'Public'}
+                  </span>
+                </div>
+                <h2 className="text-xl font-bold font-mono text-mist-100 mt-1">
+                  {selectedRepoOverview.name}
+                </h2>
+                <p className="text-xs text-mist-400 mt-0.5">
+                  {selectedRepoOverview.description || 'No description provided.'}
+                </p>
+              </div>
+
+              <button
+                onClick={() => setSelectedRepoOverview(null)}
+                className="rounded-lg p-1.5 text-mist-400 hover:bg-graphite-800 hover:text-mist-100"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Statistics */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono text-center">
+              <div className="rounded-xl border border-graphite-750 bg-graphite-850 p-3">
+                <span className="text-[10px] uppercase text-mist-500 block">Default Branch</span>
+                <span className="text-sm font-bold text-mist-100 mt-0.5 block">
+                  ⑂ {selectedRepoOverview.defaultBranch || 'main'}
+                </span>
+              </div>
+
+              <div className="rounded-xl border border-graphite-750 bg-graphite-850 p-3">
+                <span className="text-[10px] uppercase text-mist-500 block">Language</span>
+                <span className="text-sm font-bold text-amber-400 mt-0.5 block">
+                  {selectedRepoOverview.language || 'Unknown'}
+                </span>
+              </div>
+
+              <div className="rounded-xl border border-graphite-750 bg-graphite-850 p-3">
+                <span className="text-[10px] uppercase text-mist-500 block">Stars &amp; Forks</span>
+                <span className="text-sm font-bold text-mist-100 mt-0.5 block">
+                  ★ {selectedRepoOverview.stars || 0} · ⑂ {selectedRepoOverview.forks || 0}
+                </span>
+              </div>
+
+              <div className="rounded-xl border border-graphite-750 bg-graphite-850 p-3">
+                <span className="text-[10px] uppercase text-mist-500 block">Analysis Status</span>
+                <span className="text-sm font-bold text-emerald-400 mt-0.5 block">
+                  {selectedRepoOverview.hasAnalysis ? 'Audited' : 'Pending'}
+                </span>
+              </div>
+            </div>
+
+            {/* Actions Grid */}
+            <div className="space-y-2 border-t border-graphite-800 pt-4">
+              <span className="text-xs font-mono uppercase text-mist-400 block font-semibold">
+                Available Engineering Actions
+              </span>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <button
+                  onClick={() => {
+                    const r = selectedRepoOverview;
+                    setSelectedRepoOverview(null);
+                    handleAnalyze(r);
+                  }}
+                  className="flex items-center justify-center gap-2 rounded-xl bg-amber-400 px-4 py-2.5 text-xs font-bold text-graphite-950 hover:bg-amber-300 transition-colors shadow-sm"
+                >
+                  <span>⚡</span>
+                  <span>Run Analysis</span>
+                </button>
+
+                {selectedRepoOverview.repositoryId && (
+                  <>
+                    <Link
+                      to={`/dashboard/repositories/${selectedRepoOverview.repositoryId}/architecture`}
+                      className="flex items-center justify-center gap-2 rounded-xl border border-graphite-750 bg-graphite-850 px-4 py-2.5 text-xs font-semibold text-purple-300 hover:bg-graphite-800 hover:border-purple-400/40 transition-colors"
+                    >
+                      <span>🗺️</span>
+                      <span>Architecture Graph</span>
+                    </Link>
+
+                    <Link
+                      to={`/dashboard/repositories/${selectedRepoOverview.repositoryId}/chat`}
+                      className="flex items-center justify-center gap-2 rounded-xl border border-graphite-750 bg-graphite-850 px-4 py-2.5 text-xs font-semibold text-sky-300 hover:bg-graphite-800 hover:border-sky-400/40 transition-colors"
+                    >
+                      <span>💬</span>
+                      <span>Codebase AI Chat</span>
+                    </Link>
+
+                    <Link
+                      to={`/dashboard/repositories/${selectedRepoOverview.repositoryId}/analysis`}
+                      className="flex items-center justify-center gap-2 rounded-xl border border-graphite-750 bg-graphite-850 px-4 py-2.5 text-xs font-semibold text-amber-400 hover:bg-graphite-800 hover:border-amber-400/40 transition-colors"
+                    >
+                      <span>🛡️</span>
+                      <span>Review Issues</span>
+                    </Link>
+
+                    <Link
+                      to="/dashboard/tests"
+                      className="flex items-center justify-center gap-2 rounded-xl border border-graphite-750 bg-graphite-850 px-4 py-2.5 text-xs font-semibold text-emerald-300 hover:bg-graphite-800 hover:border-emerald-400/40 transition-colors"
+                    >
+                      <span>🧪</span>
+                      <span>Generate Tests</span>
+                    </Link>
+
+                    <Link
+                      to="/dashboard/pull-requests"
+                      className="flex items-center justify-center gap-2 rounded-xl border border-graphite-750 bg-graphite-850 px-4 py-2.5 text-xs font-semibold text-indigo-300 hover:bg-graphite-800 hover:border-indigo-400/40 transition-colors"
+                    >
+                      <span>🔀</span>
+                      <span>Open PR</span>
+                    </Link>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

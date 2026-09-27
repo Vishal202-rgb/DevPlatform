@@ -83,7 +83,7 @@ export default function GithubConnectionCard({ banner }) {
             </Link>
             <button
               onClick={() => {
-                if (window.confirm('Disconnect your GitHub account from DevPlatform?')) {
+                if (window.confirm('Disconnect your GitHub account from DevMind?')) {
                   disconnect();
                 }
               }}

@@ -683,6 +683,43 @@ const generateAndSaveArchitecture = async (repository, files, user, onStatusUpda
   };
 };
 
+/**
+ * Retrieve cached ArchitectureGraph for a repository or automatically generate & save it from GitHub source files.
+ */
+const getOrGenerateGraph = async (repositoryId, userId) => {
+  let graph = await ArchitectureGraph.findOne({ repository: repositoryId });
+  if (graph && Array.isArray(graph.nodes) && graph.nodes.length > 0) {
+    return graph;
+  }
+
+  const Repository = require('../models/Repository');
+  const githubService = require('./githubService');
+  const repo = await Repository.findOne({ _id: repositoryId, user: userId });
+  if (!repo) {
+    return graph || null;
+  }
+
+  try {
+    const userWithGithub = await githubService.getUserWithGithubToken(userId);
+    const accessToken = userWithGithub?.github?.accessToken;
+    if (!accessToken) return graph || null;
+
+    const result = await githubService.fetchSourceFiles(
+      accessToken,
+      repo.githubOwner,
+      repo.name,
+      repo.defaultBranch
+    );
+    const files = result?.files || [];
+    if (!files.length) return graph || null;
+
+    const saved = await generateAndSaveArchitecture(repo, files, userWithGithub);
+    return saved?.graph || null;
+  } catch (err) {
+    return graph || null;
+  }
+};
+
 module.exports = {
   classifyFile,
   extractImportsFromContent,
@@ -690,5 +727,6 @@ module.exports = {
   generateStaticArchitectureGraph,
   generateArchitecture,
   generateAndSaveArchitecture,
+  getOrGenerateGraph,
   CATEGORY_MAP,
 };

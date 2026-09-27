@@ -59,6 +59,7 @@ const ALLOWED_EXTENSIONS = new Set([
   '.sql', '.html', '.css', '.scss', '.less',
   '.vue', '.svelte',
   '.json', '.yml', '.yaml', '.sh',
+  '.key', '.pem', '.crt',
 ]);
 
 /**

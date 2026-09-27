@@ -8,11 +8,14 @@ export default function AuthLayout() {
         <div>
           <Link to="/" className="inline-flex items-center gap-2.5 group">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-amber-500 font-mono text-xs font-bold text-graphite-950 shadow-glow-sm transition-transform group-hover:scale-105">
-              Dv
+              DM
             </div>
-            <span className="font-mono text-sm font-semibold tracking-tight text-mist-100">
-              devplatform
-            </span>
+            <div>
+              <span className="font-mono text-sm font-semibold tracking-tight text-mist-100 block">
+                DevMind
+              </span>
+              <span className="text-[10px] text-mist-500 font-mono block">AI Software Engineering Platform</span>
+            </div>
           </Link>
         </div>
 
@@ -21,7 +24,7 @@ export default function AuthLayout() {
         </div>
 
         <div className="text-center sm:text-left text-xs font-mono text-mist-500">
-          <span>&copy; {new Date().getFullYear()} DevPlatform. Production-ready AI Developer SaaS.</span>
+          <span>&copy; {new Date().getFullYear()} DevMind. AI Software Engineering Platform.</span>
         </div>
       </div>
 
@@ -43,17 +46,17 @@ export default function AuthLayout() {
         <div className="relative z-10">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-amber-400">
             <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
-            AI Developer Intelligence
+            AI Software Engineering Platform
           </span>
         </div>
 
         <div className="relative z-10 max-w-lg space-y-6">
           <h2 className="text-3xl font-semibold leading-tight tracking-tight text-mist-100 font-sans">
-            Automated code reviews, vulnerability fixes, and architecture graphs.
+            Understand, analyze, fix, test, and improve your codebase with AI.
           </h2>
 
           <p className="text-sm text-mist-400 leading-relaxed">
-            DevPlatform integrates directly with your GitHub repositories to audit code quality, generate unit test suites, and open verified pull requests automatically.
+            DevMind integrates directly with your GitHub repositories to audit code quality, generate unit test suites, visualize modular architecture, and open verified pull requests automatically.
           </p>
 
           {/* Feature Badges */}

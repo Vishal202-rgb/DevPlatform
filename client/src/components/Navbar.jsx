@@ -13,15 +13,21 @@ function initialsFor(name = '') {
 }
 
 function getBreadcrumb(pathname) {
-  if (pathname === '/dashboard') return { title: 'Overview', category: 'Platform' };
-  if (pathname === '/dashboard/repositories') return { title: 'Repositories', category: 'Codebase' };
-  if (pathname === '/dashboard/analyses') return { title: 'Analyses History', category: 'Insights' };
-  if (pathname === '/dashboard/issues') return { title: 'Issues & Debts', category: 'Code Quality' };
-  if (pathname === '/dashboard/system-health') return { title: 'System Diagnostics', category: 'Environment' };
-  if (pathname.includes('/chat')) return { title: 'Codebase AI Chat', category: 'AI Assistant' };
-  if (pathname.includes('/architecture')) return { title: 'Architecture Graph', category: 'Visualization' };
+  if (pathname === '/dashboard') return { title: 'Engineering Command Center', category: 'Overview' };
+  if (pathname === '/dashboard/repositories') return { title: 'Repository Catalog', category: 'Code Intelligence' };
+  if (pathname === '/dashboard/analyses') return { title: 'Code Analysis Audits', category: 'Code Intelligence' };
+  if (pathname === '/dashboard/architecture' || pathname.includes('/architecture')) return { title: 'Architecture Graph', category: 'Code Intelligence' };
+  if (pathname === '/dashboard/chat' || pathname.includes('/chat')) return { title: 'Codebase AI Chat', category: 'Code Intelligence' };
+  if (pathname === '/dashboard/issues') return { title: 'Issues & Quality', category: 'Engineering' };
+  if (pathname === '/dashboard/security') return { title: 'Security & Vulnerabilities', category: 'Engineering' };
+  if (pathname === '/dashboard/tests') return { title: 'Tests & Test Generation', category: 'Engineering' };
+  if (pathname === '/dashboard/impact') return { title: 'Impact Analysis', category: 'Engineering' };
+  if (pathname === '/dashboard/ai-fixes') return { title: 'AI Fixes & Patches', category: 'Automation' };
+  if (pathname === '/dashboard/pull-requests') return { title: 'Pull Requests', category: 'Automation' };
+  if (pathname === '/dashboard/system-health') return { title: 'System Health & Diagnostics', category: 'System' };
+  if (pathname === '/dashboard/settings') return { title: 'Workspace Settings', category: 'System' };
   if (pathname.includes('/analysis')) return { title: 'Analysis Report', category: 'Audit' };
-  return { title: 'Dashboard', category: 'Platform' };
+  return { title: 'DevMind Dashboard', category: 'Platform' };
 }
 
 export default function Navbar({ onToggleMobileMenu, isMobileMenuOpen }) {
@@ -140,7 +146,7 @@ export default function Navbar({ onToggleMobileMenu, isMobileMenuOpen }) {
                   {user?.name || 'Developer'}
                 </p>
                 <p className="text-[11px] font-mono text-mist-500 truncate mt-0.5">
-                  {user?.email || 'dev@platform.io'}
+                  {user?.email || 'dev@devmind.io'}
                 </p>
               </div>
 
@@ -157,6 +163,18 @@ export default function Navbar({ onToggleMobileMenu, isMobileMenuOpen }) {
                     <rect width="7" height="5" x="3" y="16" rx="1" />
                   </svg>
                   <span>Dashboard Overview</span>
+                </Link>
+
+                <Link
+                  to="/dashboard/settings"
+                  onClick={() => setMenuOpen(false)}
+                  className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-mist-300 hover:bg-graphite-800 hover:text-mist-100 transition-colors"
+                >
+                  <svg className="h-3.5 w-3.5 text-mist-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                  </svg>
+                  <span>Workspace Settings</span>
                 </Link>
 
                 <Link

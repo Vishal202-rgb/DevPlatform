@@ -78,6 +78,18 @@ const repositorySchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    // Knowledge Base / RAG indexing status
+    knowledgeIndex: {
+      status: {
+        type: String,
+        enum: ['not_indexed', 'indexing', 'indexed', 'failed'],
+        default: 'not_indexed',
+      },
+      lastIndexedAt: { type: Date, default: null },
+      chunkCount: { type: Number, default: 0 },
+      fileCount: { type: Number, default: 0 },
+      error: { type: String, default: null },
+    },
   },
   {
     timestamps: true, // createdAt, updatedAt

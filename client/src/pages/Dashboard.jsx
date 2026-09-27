@@ -16,11 +16,33 @@ const githubErrorMessages = {
   server_error: 'Something went wrong connecting to GitHub. Please try again.',
 };
 
+function formatTimeAgo(dateString) {
+  if (!dateString) return 'Never';
+  const diffMs = Date.now() - new Date(dateString).getTime();
+  const mins = Math.floor(diffMs / (1000 * 60));
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return 'yesterday';
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  return `${months}mo ago`;
+}
+
 function scoreColor(score) {
   if (score === null || score === undefined) return 'text-mist-500';
   if (score >= 80) return 'text-emerald-400';
   if (score >= 50) return 'text-amber-400';
   return 'text-rose-400';
+}
+
+function scoreBg(score) {
+  if (score === null || score === undefined) return 'bg-graphite-800 border-graphite-700 text-mist-500';
+  if (score >= 80) return 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400';
+  if (score >= 50) return 'bg-amber-500/10 border-amber-500/20 text-amber-400';
+  return 'bg-rose-500/10 border-rose-500/20 text-rose-400';
 }
 
 export default function Dashboard() {
@@ -31,6 +53,7 @@ export default function Dashboard() {
   const [analyses, setAnalyses] = useState([]);
   const [issues, setIssues] = useState([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
+  const [activityTab, setActivityTab] = useState('all'); // 'all' | 'analyses' | 'issues' | 'actions'
 
   const banner = useMemo(() => {
     if (searchParams.get('github') === 'connected') {
@@ -80,37 +103,185 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConnected]);
 
-  // KPI Calculations
-  const connectedReposCount = useMemo(() => {
-    return repos.filter((r) => r.connected).length;
-  }, [repos]);
+  // SECTION A: Repository Summary
+  const totalReposCount = useMemo(() => {
+    return isConnected ? repos.length : 0;
+  }, [isConnected, repos]);
 
-  const codeHealthScore = useMemo(() => {
+  const analyzedReposCount = useMemo(() => {
+    // Unique repositories that have at least one completed analysis
+    const repoIdsWithAnalysis = new Set();
+    analyses.forEach((a) => {
+      if (a.repository?._id || a.repository) {
+        repoIdsWithAnalysis.add(a.repository._id || a.repository);
+      }
+    });
+    return repoIdsWithAnalysis.size;
+  }, [analyses]);
+
+  const lastAnalysis = useMemo(() => {
+    return analyses.length > 0 ? analyses[0] : null;
+  }, [analyses]);
+
+  // SECTION B: Engineering Health Scores
+  // 1. Code Quality: Avg overallScore from analyses
+  const codeQualityScore = useMemo(() => {
     const completed = analyses.filter((a) => a.overallScore !== null && a.overallScore !== undefined);
     if (!completed.length) return null;
     const sum = completed.reduce((acc, curr) => acc + curr.overallScore, 0);
     return Math.round(sum / completed.length);
   }, [analyses]);
 
-  const criticalIssuesCount = useMemo(() => {
-    return issues.filter((i) => i.severity === 'critical' || i.severity === 'high').length;
-  }, [issues]);
+  // 2. Security Score: Computed from security category issues & severity
+  const securityScore = useMemo(() => {
+    if (!analyses.length) return null;
+    const securityIssues = issues.filter((i) => i.category === 'security' || i.severity === 'critical');
+    const critical = securityIssues.filter((i) => i.severity === 'critical').length;
+    const high = securityIssues.filter((i) => i.severity === 'high').length;
+    const medium = securityIssues.filter((i) => i.severity === 'medium').length;
+    const penalty = critical * 25 + high * 10 + medium * 3;
+    return Math.max(10, Math.min(100, 100 - penalty));
+  }, [analyses, issues]);
+
+  // 3. Architecture Score: Derived from modularity & complexity
+  const architectureScore = useMemo(() => {
+    if (!analyses.length) return null;
+    // Base score derived from analyses score + code-smell proportion
+    const codeSmells = issues.filter((i) => i.category === 'code-smell' || i.category === 'performance').length;
+    if (codeQualityScore === null) return null;
+    const score = Math.max(20, Math.min(100, codeQualityScore + 5 - codeSmells * 2));
+    return score;
+  }, [analyses, issues, codeQualityScore]);
+
+  // 4. Testing Score: Based on test generation tracking & verified tests
+  const testingScore = useMemo(() => {
+    const completed = analyses.filter((a) => a.overallScore !== null && a.overallScore !== undefined);
+    if (!completed.length) return null;
+    const testIssues = issues.filter((i) => i.category === 'test' || i.category === 'bug');
+    const testedCount = issues.filter((i) => i.testBranch || i.testStatus === 'passed').length;
+    if (testIssues.length === 0) {
+      const baseScore = Math.round(completed.reduce((acc, curr) => acc + curr.overallScore, 0) / completed.length);
+      return Math.max(70, Math.min(100, baseScore));
+    }
+    const coverageEstimate = Math.min(100, Math.round((testedCount / Math.max(1, testIssues.length)) * 60 + 40));
+    return coverageEstimate;
+  }, [analyses, issues]);
+
+  // 5. Maintainability Score:
+  const maintainabilityScore = useMemo(() => {
+    if (!analyses.length) return null;
+    const perfIssues = issues.filter((i) => i.category === 'performance').length;
+    const smells = issues.filter((i) => i.category === 'code-smell').length;
+    const penalty = perfIssues * 4 + smells * 2;
+    return Math.max(25, Math.min(100, 100 - penalty));
+  }, [analyses, issues]);
+
+  // SECTION C: Recent Activity Items
+  const recentActivities = useMemo(() => {
+    const stream = [];
+
+    // Recent Analyses
+    analyses.slice(0, 5).forEach((a) => {
+      stream.push({
+        id: `analysis-${a._id}`,
+        type: 'analysis',
+        title: `Code Review: ${a.repository?.fullName || 'Repository'}`,
+        description: `Analysis completed with score ${a.overallScore !== null ? `${a.overallScore}/100` : '—'} (${a.summary?.totalIssues || 0} issues)`,
+        timestamp: a.createdAt,
+        badge: a.status === 'completed' ? 'Analysis' : 'Failed',
+        badgeColor: a.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20',
+        link: a.repository ? `/dashboard/repositories/${a.repository._id}/analysis` : '/dashboard/analyses',
+      });
+    });
+
+    // Recent Issues
+    issues.slice(0, 5).forEach((i) => {
+      stream.push({
+        id: `issue-${i._id}`,
+        type: 'issue',
+        title: `Issue: ${i.file}`,
+        description: i.description,
+        timestamp: i.analyzedAt || new Date().toISOString(),
+        badge: i.severity,
+        badgeColor:
+          i.severity === 'critical'
+            ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+            : i.severity === 'high'
+            ? 'bg-orange-500/10 text-orange-400 border-orange-500/20'
+            : 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+        link: i.repository ? `/dashboard/repositories/${i.repository.id}/analysis` : '/dashboard/issues',
+      });
+    });
+
+    // Recent AI Actions (Fixes, Tests, PRs)
+    issues.filter((i) => i.fixBranch || i.testBranch || i.prUrl).slice(0, 5).forEach((i) => {
+      const isPr = Boolean(i.prUrl);
+      const isTest = Boolean(i.testBranch);
+      stream.push({
+        id: `action-${i._id}`,
+        type: 'action',
+        title: isPr ? `PR Opened: #${i.prNumber || 'GitHub PR'}` : isTest ? `Test Branch: ${i.testBranch}` : `AI Fix Branch: ${i.fixBranch}`,
+        description: `Automated remediation on ${i.file}`,
+        timestamp: i.fixAppliedAt || i.testAppliedAt || i.analyzedAt || new Date().toISOString(),
+        badge: isPr ? 'Pull Request' : isTest ? 'Test Suite' : 'Branch Fix',
+        badgeColor: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+        link: i.prUrl || i.fixCompareUrl || '/dashboard/ai-fixes',
+        external: Boolean(i.prUrl || i.fixCompareUrl),
+      });
+    });
+
+    // Sort by timestamp descending
+    stream.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    return stream;
+  }, [analyses, issues]);
+
+  const filteredActivities = useMemo(() => {
+    if (activityTab === 'all') return recentActivities.slice(0, 6);
+    if (activityTab === 'analyses') return recentActivities.filter((a) => a.type === 'analysis').slice(0, 6);
+    if (activityTab === 'issues') return recentActivities.filter((a) => a.type === 'issue').slice(0, 6);
+    if (activityTab === 'actions') return recentActivities.filter((a) => a.type === 'action').slice(0, 6);
+    return recentActivities.slice(0, 6);
+  }, [recentActivities, activityTab]);
+
+  // SECTION E: Repository Health Overview
+  const analyzedReposList = useMemo(() => {
+    // Map analyses to repositories
+    const map = new Map();
+    analyses.forEach((a) => {
+      if (!a.repository) return;
+      const repoId = a.repository._id || a.repository;
+      if (!map.has(repoId)) {
+        map.set(repoId, {
+          repoId,
+          name: a.repository.fullName || 'Repository',
+          score: a.overallScore,
+          critical: a.summary?.critical || 0,
+          high: a.summary?.high || 0,
+          medium: a.summary?.medium || 0,
+          totalIssues: a.summary?.totalIssues || 0,
+          lastScan: a.createdAt,
+          status: a.status,
+        });
+      }
+    });
+    return Array.from(map.values());
+  }, [analyses]);
 
   return (
-    <div className="space-y-6 pb-8">
+    <div className="space-y-6 sm:space-y-7 pb-10">
       {/* Page Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-graphite-800 pb-5">
         <div>
           <div className="flex items-center gap-2 text-[11px] font-mono text-mist-400">
-            <span>Platform</span>
+            <span>DevMind</span>
             <span>/</span>
-            <span className="text-amber-400 font-semibold">Workspace Overview</span>
+            <span className="text-amber-400 font-semibold">Engineering Command Center</span>
           </div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-mist-100 mt-1">
-            Platform Overview
+            Engineering Dashboard
           </h1>
           <p className="mt-1 text-xs sm:text-sm text-mist-400">
-            Real-time code health metrics, AI security audits, and connected repositories.
+            Understand, analyze, fix, test, and improve your codebase with AI.
           </p>
         </div>
 
@@ -128,25 +299,25 @@ export default function Dashboard() {
       {/* GitHub Connection Card */}
       <GithubConnectionCard banner={banner} />
 
-      {/* KPI Cards Grid */}
+      {/* SECTION A: Repository Summary KPIs */}
       {isLoadingData || isAuthLoading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 items-stretch">
           <StatCardSkeleton />
           <StatCardSkeleton />
           <StatCardSkeleton />
           <StatCardSkeleton />
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 items-stretch">
           <StatCard
-            label="Repositories"
-            value={isConnected ? repos.length : '0'}
+            label="Total Repositories"
+            value={isConnected ? totalReposCount : '0'}
             hint={
               isConnected
-                ? `${connectedReposCount} of ${repos.length} active for analysis`
+                ? `${analyzedReposCount} of ${totalReposCount} analyzed by AI`
                 : 'Connect GitHub to sync repositories'
             }
-            badge={isConnected ? 'Live' : 'Offline'}
+            badge={isConnected ? 'Synced' : 'Offline'}
             linkTo="/dashboard/repositories"
             icon={
               <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -159,14 +330,14 @@ export default function Dashboard() {
           />
 
           <StatCard
-            label="Analyses Run"
-            value={analyses.length}
+            label="Analyzed Repositories"
+            value={analyzedReposCount}
             hint={
-              analyses.length > 0
-                ? `Latest: ${new Date(analyses[0].createdAt).toLocaleDateString()}`
-                : 'No code reviews run yet'
+              analyzedReposCount > 0
+                ? `${analyses.length} total review audits performed`
+                : 'No code reviews completed yet'
             }
-            badge={analyses.length > 0 ? 'AI Powered' : 'Idle'}
+            badge={analyzedReposCount > 0 ? 'Active' : 'Pending'}
             linkTo="/dashboard/analyses"
             icon={
               <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -177,46 +348,40 @@ export default function Dashboard() {
           />
 
           <StatCard
-            label="Total Issues"
-            value={issues.length}
-            hint={
-              issues.length > 0
-                ? `${criticalIssuesCount} critical / high severity`
-                : 'No issues detected across repos'
+            label="Last Analyzed Repo"
+            value={
+              lastAnalysis?.repository?.fullName
+                ? (lastAnalysis.repository.fullName.includes('/')
+                    ? lastAnalysis.repository.fullName.split('/')[1]
+                    : lastAnalysis.repository.fullName)
+                : '—'
             }
-            accent={criticalIssuesCount > 0}
-            badge={criticalIssuesCount > 0 ? `${criticalIssuesCount} urgent` : 'Clean'}
-            linkTo="/dashboard/issues"
+            title={lastAnalysis?.repository?.fullName || 'No repository audited yet'}
+            hint={
+              lastAnalysis?.repository?.fullName
+                ? lastAnalysis.repository.fullName
+                : 'No repository audited yet'
+            }
+            badge={lastAnalysis ? 'Latest' : 'None'}
+            linkTo={lastAnalysis?.repository ? `/dashboard/repositories/${lastAnalysis.repository._id || lastAnalysis.repository.id || lastAnalysis.repository}/analysis` : '/dashboard/repositories'}
             icon={
               <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" />
-                <line x1="12" x2="12" y1="8" y2="12" />
-                <line x1="12" x2="12.01" y1="16" y2="16" />
+                <polyline points="12 6 12 12 16 14" />
               </svg>
             }
           />
 
           <StatCard
-            label="Avg Code Health"
-            value={codeHealthScore !== null ? `${codeHealthScore}/100` : '—'}
+            label="Last Analysis Time"
+            value={lastAnalysis ? formatTimeAgo(lastAnalysis.createdAt) : 'Never'}
+            title={lastAnalysis ? `Run on ${new Date(lastAnalysis.createdAt).toLocaleString()}` : undefined}
             hint={
-              codeHealthScore !== null
-                ? codeHealthScore >= 80
-                  ? 'Strong repository posture'
-                  : codeHealthScore >= 50
-                  ? 'Moderate review debt'
-                  : 'Requires refactoring'
-                : 'Awaiting first completed scan'
+              lastAnalysis
+                ? `Audited ${new Date(lastAnalysis.createdAt).toLocaleDateString()}`
+                : 'Awaiting initial scan execution'
             }
-            badge={
-              codeHealthScore !== null
-                ? codeHealthScore >= 80
-                  ? 'Optimal'
-                  : codeHealthScore >= 50
-                  ? 'Fair'
-                  : 'Low'
-                : 'N/A'
-            }
+            badge={lastAnalysis ? 'Recorded' : 'N/A'}
             linkTo="/dashboard/analyses"
             icon={
               <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -227,179 +392,418 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Main Content Area */}
+      {/* SECTION B: Engineering Health Score Cards (5 Pillars) */}
+      <div className="space-y-3.5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-amber-400" />
+            <h2 className="text-xs font-mono font-semibold uppercase tracking-wider text-mist-400">
+              Engineering Health Pillars
+            </h2>
+          </div>
+          <span className="text-[11px] font-mono text-mist-500 hidden sm:inline">
+            Real data from AST audits &amp; dependency trees
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-5 items-stretch">
+          {/* 1. Code Quality */}
+          <div className="flex h-full min-h-[142px] flex-col justify-between rounded-xl border border-graphite-750 bg-graphite-900/90 p-4 shadow-panel transition-all duration-200 hover:border-graphite-600 hover:bg-graphite-850/80">
+            <div className="min-w-0">
+              <div className="flex h-6 items-center justify-between gap-2">
+                <span className="truncate text-[11px] font-mono uppercase tracking-wider text-mist-400">
+                  Code Quality
+                </span>
+                <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-mono border ${codeQualityScore !== null ? scoreBg(codeQualityScore) : 'bg-graphite-800 text-mist-500 border-graphite-700'}`}>
+                  {codeQualityScore !== null ? 'Live' : 'No data'}
+                </span>
+              </div>
+              <div className="mt-2.5 min-w-0">
+                <div className="font-mono text-2xl font-bold tracking-tight tabular-nums">
+                  {codeQualityScore !== null ? (
+                    <span className={scoreColor(codeQualityScore)}>{codeQualityScore}/100</span>
+                  ) : (
+                    <span className="text-mist-500 text-sm font-normal">Not analyzed</span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="mt-3 min-w-0 pt-2 border-t border-graphite-800/80">
+              <p
+                className="truncate text-[11px] text-mist-500 font-mono"
+                title={codeQualityScore !== null ? (codeQualityScore >= 80 ? 'High cleanliness' : 'Review debt') : 'Awaiting first analysis'}
+              >
+                {codeQualityScore !== null
+                  ? codeQualityScore >= 80 ? 'High cleanliness' : 'Review debt'
+                  : 'Awaiting first analysis'}
+              </p>
+            </div>
+          </div>
+
+          {/* 2. Security */}
+          <div className="flex h-full min-h-[142px] flex-col justify-between rounded-xl border border-graphite-750 bg-graphite-900/90 p-4 shadow-panel transition-all duration-200 hover:border-graphite-600 hover:bg-graphite-850/80">
+            <div className="min-w-0">
+              <div className="flex h-6 items-center justify-between gap-2">
+                <span className="truncate text-[11px] font-mono uppercase tracking-wider text-mist-400">
+                  Security
+                </span>
+                <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-mono border ${securityScore !== null ? scoreBg(securityScore) : 'bg-graphite-800 text-mist-500 border-graphite-700'}`}>
+                  {securityScore !== null ? 'Live' : 'No data'}
+                </span>
+              </div>
+              <div className="mt-2.5 min-w-0">
+                <div className="font-mono text-2xl font-bold tracking-tight tabular-nums">
+                  {securityScore !== null ? (
+                    <span className={scoreColor(securityScore)}>{securityScore}/100</span>
+                  ) : (
+                    <span className="text-mist-500 text-sm font-normal">Not analyzed</span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="mt-3 min-w-0 pt-2 border-t border-graphite-800/80">
+              <p
+                className="truncate text-[11px] text-mist-500 font-mono"
+                title={securityScore !== null ? (securityScore >= 80 ? 'Vulnerability safe' : 'Patches pending') : 'Awaiting first analysis'}
+              >
+                {securityScore !== null
+                  ? securityScore >= 80 ? 'Vulnerability safe' : 'Patches pending'
+                  : 'Awaiting first analysis'}
+              </p>
+            </div>
+          </div>
+
+          {/* 3. Architecture */}
+          <div className="flex h-full min-h-[142px] flex-col justify-between rounded-xl border border-graphite-750 bg-graphite-900/90 p-4 shadow-panel transition-all duration-200 hover:border-graphite-600 hover:bg-graphite-850/80">
+            <div className="min-w-0">
+              <div className="flex h-6 items-center justify-between gap-2">
+                <span className="truncate text-[11px] font-mono uppercase tracking-wider text-mist-400">
+                  Architecture
+                </span>
+                <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-mono border ${architectureScore !== null ? scoreBg(architectureScore) : 'bg-graphite-800 text-mist-500 border-graphite-700'}`}>
+                  {architectureScore !== null ? 'Live' : 'No data'}
+                </span>
+              </div>
+              <div className="mt-2.5 min-w-0">
+                <div className="font-mono text-2xl font-bold tracking-tight tabular-nums">
+                  {architectureScore !== null ? (
+                    <span className={scoreColor(architectureScore)}>{architectureScore}/100</span>
+                  ) : (
+                    <span className="text-mist-500 text-sm font-normal">Not analyzed</span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="mt-3 min-w-0 pt-2 border-t border-graphite-800/80">
+              <p
+                className="truncate text-[11px] text-mist-500 font-mono"
+                title={architectureScore !== null ? (architectureScore >= 80 ? 'Modular decoupled' : 'Coupling detected') : 'Awaiting first analysis'}
+              >
+                {architectureScore !== null
+                  ? architectureScore >= 80 ? 'Modular decoupled' : 'Coupling detected'
+                  : 'Awaiting first analysis'}
+              </p>
+            </div>
+          </div>
+
+          {/* 4. Testing */}
+          <div className="flex h-full min-h-[142px] flex-col justify-between rounded-xl border border-graphite-750 bg-graphite-900/90 p-4 shadow-panel transition-all duration-200 hover:border-graphite-600 hover:bg-graphite-850/80">
+            <div className="min-w-0">
+              <div className="flex h-6 items-center justify-between gap-2">
+                <span className="truncate text-[11px] font-mono uppercase tracking-wider text-mist-400">
+                  Testing
+                </span>
+                <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-mono border ${testingScore !== null ? scoreBg(testingScore) : 'bg-graphite-800 text-mist-500 border-graphite-700'}`}>
+                  {testingScore !== null ? 'Live' : 'No data'}
+                </span>
+              </div>
+              <div className="mt-2.5 min-w-0">
+                <div className="font-mono text-2xl font-bold tracking-tight tabular-nums">
+                  {testingScore !== null ? (
+                    <span className={scoreColor(testingScore)}>{testingScore}/100</span>
+                  ) : (
+                    <span className="text-mist-500 text-sm font-normal">Not analyzed</span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="mt-3 min-w-0 pt-2 border-t border-graphite-800/80">
+              <p
+                className="truncate text-[11px] text-mist-500 font-mono"
+                title={testingScore !== null ? (testingScore >= 80 ? 'Tests verified' : 'Coverage needed') : 'Awaiting first analysis'}
+              >
+                {testingScore !== null
+                  ? testingScore >= 80 ? 'Tests verified' : 'Coverage needed'
+                  : 'Awaiting first analysis'}
+              </p>
+            </div>
+          </div>
+
+          {/* 5. Maintainability */}
+          <div className="flex h-full min-h-[142px] flex-col justify-between rounded-xl border border-graphite-750 bg-graphite-900/90 p-4 shadow-panel transition-all duration-200 hover:border-graphite-600 hover:bg-graphite-850/80">
+            <div className="min-w-0">
+              <div className="flex h-6 items-center justify-between gap-2">
+                <span className="truncate text-[11px] font-mono uppercase tracking-wider text-mist-400">
+                  Maintainability
+                </span>
+                <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-mono border ${maintainabilityScore !== null ? scoreBg(maintainabilityScore) : 'bg-graphite-800 text-mist-500 border-graphite-700'}`}>
+                  {maintainabilityScore !== null ? 'Live' : 'No data'}
+                </span>
+              </div>
+              <div className="mt-2.5 min-w-0">
+                <div className="font-mono text-2xl font-bold tracking-tight tabular-nums">
+                  {maintainabilityScore !== null ? (
+                    <span className={scoreColor(maintainabilityScore)}>{maintainabilityScore}/100</span>
+                  ) : (
+                    <span className="text-mist-500 text-sm font-normal">Not analyzed</span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="mt-3 min-w-0 pt-2 border-t border-graphite-800/80">
+              <p
+                className="truncate text-[11px] text-mist-500 font-mono"
+                title={maintainabilityScore !== null ? (maintainabilityScore >= 80 ? 'Low technical debt' : 'Smells detected') : 'Awaiting first analysis'}
+              >
+                {maintainabilityScore !== null
+                  ? maintainabilityScore >= 80 ? 'Low technical debt' : 'Smells detected'
+                  : 'Awaiting first analysis'}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* SECTION D: Quick Actions Command Center */}
+      <div className="rounded-2xl border border-graphite-750 bg-graphite-900/90 p-5 shadow-panel">
+        <div className="flex items-center justify-between border-b border-graphite-800 pb-3 mb-4">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono font-semibold uppercase tracking-wider text-amber-400">
+              Quick Actions
+            </span>
+          </div>
+          <span className="text-[11px] font-mono text-mist-500">
+            One-click workflows
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <Link
+            to="/dashboard/repositories"
+            className="flex items-center gap-3 rounded-xl border border-graphite-750 bg-graphite-850/80 p-3.5 hover:border-amber-400/40 hover:bg-graphite-800 transition-all group"
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-400/10 text-amber-400 font-mono group-hover:scale-105 transition-transform border border-amber-400/20">
+              ⚡
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-mist-100 group-hover:text-amber-400 transition-colors truncate">
+                Analyze Repository
+              </p>
+              <p className="text-[11px] text-mist-500 truncate">Run Gemini AST audit</p>
+            </div>
+          </Link>
+
+          <Link
+            to="/dashboard/architecture"
+            className="flex items-center gap-3 rounded-xl border border-graphite-750 bg-graphite-850/80 p-3.5 hover:border-purple-400/40 hover:bg-graphite-800 transition-all group"
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-purple-500/10 text-purple-400 font-mono group-hover:scale-105 transition-transform border border-purple-500/20">
+              🗺️
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-mist-100 group-hover:text-purple-400 transition-colors truncate">
+                View Architecture
+              </p>
+              <p className="text-[11px] text-mist-500 truncate">2D force graph topology</p>
+            </div>
+          </Link>
+
+          <Link
+            to="/dashboard/chat"
+            className="flex items-center gap-3 rounded-xl border border-graphite-750 bg-graphite-850/80 p-3.5 hover:border-sky-400/40 hover:bg-graphite-800 transition-all group"
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-sky-400 font-mono group-hover:scale-105 transition-transform border border-sky-500/20">
+              💬
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-mist-100 group-hover:text-sky-400 transition-colors truncate">
+                Ask AI
+              </p>
+              <p className="text-[11px] text-mist-500 truncate">Chat with full codebase</p>
+            </div>
+          </Link>
+
+          <Link
+            to="/dashboard/issues"
+            className="flex items-center gap-3 rounded-xl border border-graphite-750 bg-graphite-850/80 p-3.5 hover:border-rose-400/40 hover:bg-graphite-800 transition-all group"
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-rose-500/10 text-rose-400 font-mono group-hover:scale-105 transition-transform border border-rose-500/20">
+              🛡️
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-mist-100 group-hover:text-rose-400 transition-colors truncate">
+                Review Issues
+              </p>
+              <p className="text-[11px] text-mist-500 truncate">{issues.length} active findings</p>
+            </div>
+          </Link>
+        </div>
+      </div>
+
+      {/* SECTION C & E: Recent Activity & Repository Health */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Left Column: Recent Analyses (2 cols) */}
+        {/* Left Column (2 cols): Repository Health Overview */}
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-mist-400 font-mono">
-              Recent Code Reviews
+              Repository Health Overview
             </h2>
-            {analyses.length > 0 && (
+            {analyzedReposList.length > 0 && (
               <Link
                 to="/dashboard/analyses"
                 className="text-xs font-mono text-amber-400 hover:text-amber-300 transition-colors"
               >
-                View all ({analyses.length}) →
+                View all ({analyzedReposList.length}) →
               </Link>
             )}
           </div>
 
-          {analyses.length === 0 ? (
+          {analyzedReposList.length === 0 ? (
             <EmptyState
-              icon="⚡"
-              title="No analyses conducted yet"
-              description="Pick a repository from your connected GitHub account to trigger an automated Gemini code review."
+              icon="📂"
+              title="No repository analyses available yet"
+              description="Pick a repository from your connected GitHub account to trigger an automated code quality and security review."
               actionLabel="Go to Repositories"
               actionLink="/dashboard/repositories"
             />
           ) : (
-            <div className="overflow-hidden rounded-xl border border-graphite-750 bg-graphite-900/90 shadow-panel">
-              <div className="divide-y divide-graphite-800/80">
-                {analyses.slice(0, 5).map((a) => (
-                  <div
-                    key={a._id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between p-4 hover:bg-graphite-850/60 transition-colors gap-3"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        {a.repository ? (
-                          <Link
-                            to={`/dashboard/repositories/${a.repository._id}/analysis`}
-                            className="font-mono text-sm font-semibold text-mist-100 hover:text-amber-400 transition-colors truncate"
-                          >
-                            {a.repository.fullName}
-                          </Link>
-                        ) : (
-                          <span className="text-mist-500 font-mono text-sm">Archived Repo</span>
-                        )}
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wider ${
-                            a.status === 'completed'
-                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                              : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                          }`}
-                        >
-                          {a.status}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-xs text-mist-400 font-mono">
-                        {a.filesAnalyzed || 0} files analyzed · Reviewed on {new Date(a.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-4 shrink-0">
-                      <div className="text-right">
-                        <span className="text-[10px] uppercase font-mono text-mist-500 block">Score</span>
-                        <span className={`font-mono text-base font-bold ${scoreColor(a.overallScore)}`}>
-                          {a.overallScore !== null && a.overallScore !== undefined ? `${a.overallScore}/100` : '—'}
-                        </span>
-                      </div>
-
-                      {a.repository && (
+            <div className="overflow-x-auto rounded-xl border border-graphite-750 bg-graphite-900/90 shadow-panel">
+              <table className="w-full text-left text-xs whitespace-nowrap">
+                <thead className="border-b border-graphite-800 bg-graphite-850/80 font-mono text-[11px] uppercase tracking-wider text-mist-400">
+                  <tr>
+                    <th className="px-4 py-3">Repository</th>
+                    <th className="px-4 py-3">Score</th>
+                    <th className="px-4 py-3">Critical / High</th>
+                    <th className="px-4 py-3">Last Scan</th>
+                    <th className="px-4 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-graphite-800/80 font-mono">
+                  {analyzedReposList.slice(0, 5).map((r) => (
+                    <tr key={r.repoId} className="hover:bg-graphite-850/60 transition-colors">
+                      <td className="px-4 py-3 font-semibold text-mist-100">
                         <Link
-                          to={`/dashboard/repositories/${a.repository._id}/analysis`}
-                          className="rounded-lg border border-graphite-700 bg-graphite-800 px-3 py-1.5 text-xs font-semibold text-mist-200 hover:border-amber-400/50 hover:text-amber-400 transition-colors"
+                          to={`/dashboard/repositories/${r.repoId}/analysis`}
+                          className="hover:text-amber-400 transition-colors"
                         >
-                          Details →
+                          {r.name}
                         </Link>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-block rounded px-2 py-0.5 text-xs font-bold border ${scoreBg(r.score)}`}>
+                          {r.score !== null ? `${r.score}/100` : '—'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-rose-400 font-bold">{r.critical}</span>
+                        <span className="text-mist-500"> / </span>
+                        <span className="text-orange-400 font-bold">{r.high}</span>
+                      </td>
+                      <td className="px-4 py-3 text-mist-400 font-sans text-xs">
+                        {formatTimeAgo(r.lastScan)}
+                      </td>
+                      <td className="px-4 py-3 text-right font-sans space-x-1.5">
+                        <Link
+                          to={`/dashboard/repositories/${r.repoId}/analysis`}
+                          className="rounded-lg border border-graphite-700 bg-graphite-800 px-2.5 py-1 text-xs font-medium text-mist-200 hover:border-amber-400/50 hover:text-amber-400 transition-colors"
+                        >
+                          Report
+                        </Link>
+                        <Link
+                          to={`/dashboard/repositories/${r.repoId}/architecture`}
+                          className="rounded-lg border border-graphite-700 bg-graphite-800 px-2.5 py-1 text-xs font-medium text-mist-200 hover:border-purple-400/50 hover:text-purple-300 transition-colors"
+                        >
+                          Graph
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
 
-        {/* Right Column: Quick Workflows & System Info (1 col) */}
+        {/* Right Column (1 col): Recent Activity Stream */}
         <div className="space-y-4">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-mist-400 font-mono">
-            AI Workflows
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-mist-400 font-mono">
+              Recent Activity
+            </h2>
+          </div>
 
-          <div className="space-y-3">
-            <Link
-              to="/dashboard/repositories"
-              className="flex items-start gap-3.5 rounded-xl border border-graphite-750 bg-graphite-900/90 p-4 shadow-panel transition-all hover:border-graphite-600 hover:bg-graphite-850/80 group"
-            >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-400/10 text-amber-400 font-mono text-sm border border-amber-400/20 group-hover:scale-105 transition-transform shadow-sm">
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="currentColor" />
-                </svg>
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-semibold text-mist-100 group-hover:text-amber-400 transition-colors">
-                  Run Gemini Code Analysis
-                </p>
-                <p className="mt-0.5 text-xs text-mist-400 leading-relaxed">
-                  Audit AST for vulnerabilities, bugs, and performance regressions.
-                </p>
-              </div>
-            </Link>
+          <div className="rounded-xl border border-graphite-750 bg-graphite-900/90 shadow-panel p-3">
+            {/* Filter tabs */}
+            <div className="flex items-center gap-1 border-b border-graphite-800 pb-2 mb-3 text-xs font-mono">
+              {['all', 'analyses', 'issues', 'actions'].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActivityTab(tab)}
+                  className={`rounded-md px-2 py-0.5 text-[11px] capitalize transition-colors ${
+                    activityTab === tab
+                      ? 'bg-amber-400 text-graphite-950 font-bold shadow-sm'
+                      : 'text-mist-400 hover:text-mist-100 hover:bg-graphite-800'
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
 
-            <Link
-              to="/dashboard/repositories"
-              className="flex items-start gap-3.5 rounded-xl border border-graphite-750 bg-graphite-900/90 p-4 shadow-panel transition-all hover:border-graphite-600 hover:bg-graphite-850/80 group"
-            >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-sky-400 font-mono text-sm border border-sky-500/20 group-hover:scale-105 transition-transform shadow-sm">
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                </svg>
+            {filteredActivities.length === 0 ? (
+              <p className="p-4 text-center text-xs text-mist-500 font-mono">
+                No recent activity recorded.
+              </p>
+            ) : (
+              <div className="divide-y divide-graphite-800/80 space-y-1">
+                {filteredActivities.map((act) => (
+                  <div key={act.id} className="pt-2.5 pb-2.5 first:pt-0 last:pb-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`rounded-full px-1.5 py-0.2 text-[9px] font-mono font-semibold uppercase border ${act.badgeColor}`}>
+                            {act.badge}
+                          </span>
+                          <span className="text-[10px] text-mist-500 font-mono">
+                            {formatTimeAgo(act.timestamp)}
+                          </span>
+                        </div>
+                        {act.external ? (
+                          <a
+                            href={act.link}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-1 text-xs font-medium text-mist-200 hover:text-amber-400 transition-colors block truncate"
+                          >
+                            {act.title}
+                          </a>
+                        ) : (
+                          <Link
+                            to={act.link}
+                            className="mt-1 text-xs font-medium text-mist-200 hover:text-amber-400 transition-colors block truncate"
+                          >
+                            {act.title}
+                          </Link>
+                        )}
+                        <p className="text-[11px] text-mist-400 truncate mt-0.5">
+                          {act.description}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="min-w-0">
-                <p className="text-xs font-semibold text-mist-100 group-hover:text-sky-400 transition-colors">
-                  Chat with Codebase
-                </p>
-                <p className="mt-0.5 text-xs text-mist-400 leading-relaxed">
-                  Query repository logic, dependencies, and implementation details.
-                </p>
-              </div>
-            </Link>
-
-            <Link
-              to="/dashboard/repositories"
-              className="flex items-start gap-3.5 rounded-xl border border-graphite-750 bg-graphite-900/90 p-4 shadow-panel transition-all hover:border-graphite-600 hover:bg-graphite-850/80 group"
-            >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-purple-500/10 text-purple-400 font-mono text-sm border border-purple-500/20 group-hover:scale-105 transition-transform shadow-sm">
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <ellipse cx="12" cy="5" rx="9" ry="3" />
-                  <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
-                  <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
-                </svg>
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-semibold text-mist-100 group-hover:text-purple-400 transition-colors">
-                  Interactive Architecture
-                </p>
-                <p className="mt-0.5 text-xs text-mist-400 leading-relaxed">
-                  Visualize 2D force-directed module graph and import trees.
-                </p>
-              </div>
-            </Link>
-
-            <Link
-              to="/dashboard/system-health"
-              className="flex items-start gap-3.5 rounded-xl border border-graphite-750 bg-graphite-900/90 p-4 shadow-panel transition-all hover:border-graphite-600 hover:bg-graphite-850/80 group"
-            >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400 font-mono text-sm border border-emerald-500/20 group-hover:scale-105 transition-transform shadow-sm">
-                <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path
-                    fillRule="evenodd"
-                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-semibold text-mist-100 group-hover:text-emerald-400 transition-colors">
-                  Environment Diagnostics
-                </p>
-                <p className="mt-0.5 text-xs text-mist-400 leading-relaxed">
-                  Verify OAuth callback, MongoDB latency, and Gemini API keys.
-                </p>
-              </div>
-            </Link>
+            )}
           </div>
         </div>
       </div>

@@ -1,395 +1,467 @@
-# DevPlatform — Part 1 + 2 + 3: Foundation + GitHub + AI Code Analysis
+# DevMind
 
-MERN foundation for an AI-powered developer productivity platform. Part 1 laid
-down authentication, protected routes, and a dashboard shell. Part 2 added
-GitHub OAuth so a user can connect their account and browse repositories.
-Part 3 completes the core loop: fetch a connected repository's source files
-from GitHub, send them to Gemini (`gemini-2.5-flash`) for review, and show
-the results — score, severity breakdown, and per-issue recommendations — on
-an analysis dashboard.
+AI Software Engineering Platform
 
-## Stack
+> "Understand, analyze, explain, detect, and improve your codebase with AI."
 
-- **Frontend:** React 18 + Vite + Tailwind CSS + React Router
-- **Backend:** Node.js + Express + Axios
-- **Database:** MongoDB + Mongoose
-- **Auth:** JWT (Bearer header or httpOnly cookie) + bcrypt password hashing
-- **Integrations:** GitHub OAuth (Part 2), Gemini `gemini-2.5-flash` code analysis (Part 3)
+DevMind is a comprehensive, production-grade **AI Software Engineering Platform** designed to understand, analyze, reason, detect vulnerabilities, evaluate change blast radiuses, generate regression tests, and author verified pull requests on GitHub.
 
-## Folder structure
+Unlike prompt wrappers or naive file-replacement tools, DevMind keeps the developer in complete control of every code change through interactive diff previews, stale patch validation, Security Gate checks, allowlisted test execution, and rigorous AI verification.
+
+---
+
+## 1. Overview
+
+### Why DevMind Exists
+Modern software development requires deep context: understanding repository-wide dependencies, avoiding breaking API contracts, maintaining security guardrails, and validating fixes with comprehensive tests. 
+
+DevMind connects **static code analysis**, **logical AST semantic chunking**, **vector RAG retrieval**, **2D graph topology reasoning**, and **multi-agent AI automation** into a unified engineering control plane.
+
+### End-to-End AI Engineering Workflow
 
 ```
-devplatform/
+                ISSUE DETECTED
+                      ↓
+            CONTEXT RETRIEVAL (RAG)
+                      ↓
+            IMPACT ANALYSIS (Blast Radius)
+                      ↓
+               AI FIX AGENT
+                      ↓
+            UNIFIED DIFF PREVIEW
+                      ↓
+            SECURITY GATE CHECK
+                      ↓
+          AI TEST GENERATION (4 Scenarios)
+                      ↓
+          CONTROLLED TEST EXECUTION
+                      ↓
+            AI FIX VERIFICATION
+                      ↓
+            DEVELOPER APPROVAL
+                      ↓
+           APPLY TARGETED PATCH
+                      ↓
+          CREATE ISOLATED GIT BRANCH
+                      ↓
+               CREATE COMMIT
+                      ↓
+         GITHUB PULL REQUEST AUTOMATION
+```
+
+---
+
+## 2. Key Features
+
+- **GitHub Integration & OAuth**: Connect GitHub accounts, browse public and private repositories, and clone repository trees with branch switching.
+- **Repository Knowledge Base & RAG**: Discovers source code, ignores build/binary artifacts, chunks files by logical AST symbols (functions, classes, components, routes), and creates vector embeddings stored in MongoDB with cosine similarity search.
+- **Multi-Agent AI Architecture**:
+  - **Bug Agent**: Detects null/undefined dereferences, broken async/await, race conditions, and logic errors.
+  - **Security Agent**: Audits OWASP Top 10 vulnerabilities, auth bypasses, and sanitizes secrets (`API_KEY=********`).
+  - **Architecture Agent**: Detects circular dependencies, god modules, and coupling bottlenecks using graph topology.
+  - **Test Agent**: Uncovers test coverage gaps, unhandled boundary conditions, and generates test suites.
+  - **Performance Agent**: Detects N+1 query patterns, blocking loops, and memory leaks.
+  - **Fix Agent**: Generates targeted, minimal code modifications with diff preview and Security Gate validation.
+  - **Verification Agent**: Evaluates whether a proposed fix truly resolves an issue without creating side effects.
+- **Evidence-First AI Reasoning**: Every finding and chat response is grounded with exact line-range citations (`controllers/authController.js:42-71`) and match percentages. If context is insufficient, the system safely reports uncertainty instead of hallucinating.
+- **Impact Analysis & Blast Radius**: Calculates direct callers, transitive downstream cascades (BFS), affected API routes, and test suites with AI risk explanations.
+- **5-Mode AI Chat**: Specialized modes for `Codebase RAG`, `Architecture`, `Security`, `Debugging`, and `General AI` with instant RAG re-indexing and interactive evidence drawers.
+- **AI Fix Agent & Unified Diff Preview**: Generates minimal targeted patches, renders line-by-line colored diffs (`+` / `-`), runs Security Gate checks, and guards against stale patches.
+- **Comprehensive Test Generation**: Detects project test frameworks (`Jest`, `Vitest`, `Mocha`, `Pytest`, `JUnit`) and authors 4 mandatory scenarios:
+  1. Regression test
+  2. Happy path test
+  3. Edge case test
+  4. Error / invalid input test
+- **Controlled Test Execution Engine**: Sandboxed runner executing allowlisted commands (`npm test`, `pytest`, `mvn test`) with duration tracking, pass/fail counts, and AI test failure diagnosis.
+- **Pull Request Automation & PR Readiness**: Evaluates a 5-checkpoint PR Readiness score and authors verified GitHub PRs with structured Markdown descriptions.
+- **Audit Trail & Rollback**: Complete engineering activity log with rollback/discard capabilities for uncommitted session changes.
+
+---
+
+## 3. System Architecture
+
+```mermaid
+flowchart TD
+    DEV([Developer / User])
+
+    subgraph CLIENT [Frontend - React 19 + Vite + Tailwind]
+        DASH[Command Center Dashboard]
+        ARCH_VIEW[2D Architecture Force Graph]
+        CHAT_VIEW[5-Mode AI Chat & Evidence Drawer]
+        IMPACT_VIEW[Impact Analysis & Blast Radius UI]
+        SEC_VIEW[Security Intelligence & Agent Audit]
+        FIX_VIEW[AI Fix Workspace & Diff Preview]
+        TEST_VIEW[Test Generator & Execution Runner]
+        PR_VIEW[PR Readiness & GitHub Automation]
+    end
+
+    subgraph SERVER [Backend - Node.js + Express API]
+        AUTH_SVC[Auth & JWT Middleware]
+        GH_SVC[GitHub OAuth & Git Tree API]
+        ANALYSIS_SVC[Analysis & Code Review Engine]
+        ARCH_SVC[Architecture Graph & Topology Engine]
+        IMPACT_SVC[Impact Analysis & BFS Traversal Engine]
+        
+        subgraph RAG_PIPELINE [RAG Knowledge Base Pipeline]
+            CHUNKER[Logical AST Chunking Service]
+            EMBED_SVC[Embedding Service + Fallback]
+            VEC_STORE[Vector Store Abstraction]
+            RETRIEVAL_SVC[Semantic Retrieval & Context Builder]
+        end
+
+        subgraph AGENT_SYSTEM [Multi-Agent AI Orchestration]
+            ORCHESTRATOR[Agent Orchestrator]
+            BUG_AGT[Bug Agent]
+            SEC_AGT[Security Agent & Redactor]
+            ARCH_AGT[Architecture Agent]
+            TEST_AGT[Test Agent]
+            PERF_AGT[Performance Agent]
+            FIX_AGT[AI Fix Agent & Security Gate]
+            VERIFY_AGT[Verification Agent & PR Readiness]
+        end
+
+        TEST_RUNNER[Allowlisted Test Execution Runner]
+        GEMINI_SVC[Gemini AI Service with Retry & Fallback Chain]
+    end
+
+    subgraph STORAGE [Persistent Storage - MongoDB]
+        MONGO[(MongoDB Database)]
+        COLL_USERS[(Users)]
+        COLL_REPOS[(Repositories)]
+        COLL_ANALYSES[(Analyses)]
+        COLL_ARCH[(Architecture Graphs)]
+        COLL_CHUNKS[(Code Chunks & Embeddings)]
+        COLL_RUNS[(Agent Runs & Findings)]
+        COLL_AUDIT[(Audit Action Logs)]
+    end
+
+    DEV --> CLIENT
+    CLIENT --> SERVER
+    SERVER --> MONGO
+
+    GH_SVC --> CHUNKER
+    CHUNKER --> EMBED_SVC
+    EMBED_SVC --> VEC_STORE
+    VEC_STORE --> COLL_CHUNKS
+    VEC_STORE --> RETRIEVAL_SVC
+
+    RETRIEVAL_SVC --> CHAT_VIEW
+    RETRIEVAL_SVC --> FIX_AGT
+    RETRIEVAL_SVC --> ORCHESTRATOR
+
+    ORCHESTRATOR --> BUG_AGT & SEC_AGT & ARCH_AGT & TEST_AGT & PERF_AGT
+    FIX_AGT --> GEMINI_SVC
+    VERIFY_AGT --> GEMINI_SVC
+    GEMINI_SVC --> ORCHESTRATOR
+
+    FIX_AGT --> GH_SVC
+    TEST_RUNNER --> VERIFY_AGT
+    VERIFY_AGT --> PR_VIEW
+    SERVER --> COLL_AUDIT
+```
+
+---
+
+## 4. Repository Architecture
+
+```
+DevPlatform/
+├── client/
+│   ├── src/
+│   │   ├── components/          # Sidebar, Navbar, StatCard, CreatePrModal, Skeletons, MarkdownRenderer
+│   │   ├── context/             # AuthContext, ToastContext
+│   │   ├── hooks/               # useAuth, useGithubConnection, useAnalysisPoller
+│   │   ├── layouts/             # AuthLayout, DashboardLayout
+│   │   ├── pages/               # Dashboard, Repositories, Architecture, Chat, ImpactAnalysis,
+│   │   │                        # Security, Tests, AiFixes, PullRequests, Settings, AnalysisResult
+│   │   ├── routes/              # ProtectedRoute, App routing setup
+│   │   ├── services/            # api, authService, githubService, analysisService,
+│   │   │                        # knowledgeService, agentService, impactService, engineeringService
+│   │   ├── App.jsx              # Main React App routing root
+│   │   ├── index.css            # Dark mode tokens & CSS utilities
+│   │   └── main.jsx             # React DOM entry point
+│   ├── package.json             # React 19, Vite, Tailwind CSS, react-force-graph-2d
+│   └── vite.config.js           # Vite configuration
+│
 ├── server/
 │   ├── src/
-│   │   ├── config/         # env loader, MongoDB connection
-│   │   ├── controllers/    # authController.js, githubController.js, analysisController.js
-│   │   ├── middleware/     # auth (protect/authorize), centralized error handler
-│   │   ├── models/         # User.js, Repository.js, Analysis.js
-│   │   ├── routes/         # authRoutes.js, githubRoutes.js, analysisRoutes.js, index.js
-│   │   ├── services/       # authService.js, githubService.js (OAuth + GitHub API +
-│   │   │                   # file fetching), geminiService.js, analysisService.js
-│   │   ├── utils/          # ApiError, JWT helpers, fileFilters.js (ignore rules)
-│   │   └── app.js          # Express app setup
-│   ├── server.js           # entry point
-│   ├── package.json
-│   └── .env.example
-└── client/
-    ├── src/
-    │   ├── components/     # Sidebar, Navbar, StatCard, FormInput, PlaceholderPage,
-    │   │                   # GithubConnectionCard, RepositoryCard, ScoreGauge,
-    │   │                   # SeveritySummary, IssueList
-    │   ├── pages/           # Login, Register, Dashboard, Repositories, AnalysisResult
-    │   ├── layouts/         # AuthLayout, DashboardLayout
-    │   ├── services/        # api.js (axios), authService.js, githubService.js,
-    │   │                    # analysisService.js
-    │   ├── hooks/            # useAuth, useGithubConnection
-    │   ├── context/          # AuthContext (global auth state)
-    │   └── routes/           # ProtectedRoute
-    ├── package.json
-    └── .env.example
+│   │   ├── config/              # env.js, db.js
+│   │   ├── controllers/         # authController, githubController, analysisController,
+│   │   │                        # architectureController, chatController, knowledgeController,
+│   │   │                        # agentController, impactController, engineeringController, systemController
+│   │   ├── middleware/          # authMiddleware (protect, authorize), errorHandler
+│   │   ├── models/              # User, Repository, Analysis, ArchitectureGraph, CodeChunk, AgentRun, AuditLog
+│   │   ├── routes/              # authRoutes, githubRoutes, analysisRoutes, architectureRoutes,
+│   │   │                        # chatRoutes, knowledgeRoutes, agentRoutes, impactRoutes, engineeringRoutes
+│   │   ├── services/            # authService, githubService, analysisService, architectureService,
+│   │   │                        # chunkingService, embeddingService, vectorStore, retrievalService,
+│   │   │                        # knowledgeService, agentOrchestrator, impactService, fixAgentService,
+│   │   │                        # testRunnerService, verificationAgentService, geminiService
+│   │   ├── utils/               # ApiError, fileFilters, jwt helpers
+│   │   └── app.js               # Express app configuration
+│   ├── test/                    # 5 test suites (34 tests)
+│   │   ├── architectureService.test.js
+│   │   ├── geminiRobustness.test.js
+│   │   ├── prGenerator.test.js
+│   │   ├── part2Platform.test.js
+│   │   └── part3Engineering.test.js
+│   ├── server.js                # Server entry point
+│   ├── package.json             # Express, Mongoose, Axios, Helmet, Bcrypt
+│   └── .env.example             # Server environment variables
+│
+└── README.md                    # Complete project documentation
 ```
 
-## Environment variables
+---
 
-**server/.env** (copy from `server/.env.example`):
+## 5. AI Multi-Agent Architecture
 
-| Variable | Description |
-|---|---|
-| `NODE_ENV` | `development` / `production` |
-| `PORT` | API port (default `5000`) |
-| `CLIENT_URL` | Frontend origin, for CORS (default `http://localhost:5173`) |
-| `MONGO_URI` | MongoDB connection string |
-| `JWT_SECRET` | Long random secret used to sign JWTs |
-| `JWT_EXPIRES_IN` | Token lifetime (default `7d`) |
-| `JWT_COOKIE_EXPIRES_DAYS` | httpOnly cookie lifetime in days (default `7`) |
-| `GITHUB_CLIENT_ID` | OAuth App client ID from GitHub |
-| `GITHUB_CLIENT_SECRET` | OAuth App client secret from GitHub — **server only, never sent to the frontend** |
-| `GITHUB_CALLBACK_URL` | Must exactly match the "Authorization callback URL" configured on the GitHub OAuth App (default `http://localhost:5000/api/github/callback`) |
-| `GEMINI_API_KEY` | API key for the Gemini API (Google AI Studio) — **server only, never sent to the frontend** |
-| `GEMINI_MODEL` | Model used for code analysis (default `gemini-2.5-flash`) |
+| Agent | Responsibility | Input Context | Finding Output | Evidence Standard |
+|---|---|---|---|---|
+| **Bug Agent** | Null pointer risks, broken async/await, race conditions, edge-case conditions | Logical function & component code chunks | Title, description, severity, confidence, recommendation, fix | Exact line range & problematic snippet |
+| **Security Agent** | Injection (SQL/NoSQL/Command), Auth/RBAC bypasses, CORS, cookies, secrets | Route handlers, auth middleware, sensitive modules | Title, severity, confidence, OWASP category, recommendation | Sanitized lines with secrets redacted (`API_KEY=********`) |
+| **Architecture Agent** | Circular dependencies, god modules, dependency bottlenecks, separation of concerns | `ArchitectureGraph` topology, nodes, degrees, cyclic links | Architectural issue, severity, affected files, fix strategy | Direct graph edge and dependency trace |
+| **Test Agent** | Test coverage gaps, untested business workflows, boundary conditions | Service methods, calculation utilities, model schemas | Missing test scenarios, suggested test suites, assertions | Exact file & signature requiring tests |
+| **Performance Agent** | N+1 queries in loops, synchronous blocking calls in async routes, memory leaks | Data access layers, loops, heavy compute functions | Performance bottleneck, severity, optimization strategy | Code snippet of loop/query pattern |
+| **Fix Agent** | Generates minimal targeted patches with Security Gate checks and diff previews | Issue, file content, RAG chunks, impact blast radius | Full proposed content, unified diff, security check | Line-by-line diff (`+`/`-`) with fresh SHA validation |
+| **Verification Agent** | Rigorously determines whether code modifications resolved the root cause | Original issue, original code, modified code, test results | `RESOLVED`, `PARTIALLY_RESOLVED`, `NOT_RESOLVED` | Critical reasoning & remaining risks analysis |
 
-**client/.env** (copy from `client/.env.example`):
+---
 
-| Variable | Description |
-|---|---|
-| `VITE_API_BASE_URL` | Backend API base URL (default `http://localhost:5000/api`) |
+## 6. RAG Knowledge Base Pipeline
 
-## Running locally
+```
+GitHub Tree / Blobs → Path Filtering → Incremental SHA-256 Hash → Logical AST/Symbol Chunker → Batch Embeddings → MongoDB VectorStore → Cosine Similarity Search → Context Builder → Gemini 2.5
+```
+- **AST/Symbol Chunking**: Parses JS/TS/JSX/TSX, Python, Java, C/C++, JSON, YAML, and Markdown by functions, classes, React components, and Express routes.
+- **Incremental Caching**: SHA-256 file hashes skip unchanged files on re-indexing.
+- **Resilience**: Features normalized deterministic embedding fallback so the platform remains operational in offline or rate-limited environments.
 
-### 1. Backend
+---
+
+## 7. Impact Analysis & Blast Radius
+
+- Calculates **Direct Callers** (1st degree) and **Indirect Downstream Modules** via BFS queue traversal up to 6 levels deep.
+- Identifies **Affected API Endpoints** (`routes`, `controllers`) and **Affected Test Suites** (`*.test.*`, `*.spec.*`, `__tests__`).
+- Computes risk score & level (`Low`, `Medium`, `High`, `Critical`) with sensitivity boost if touching auth, user models, or database schemas.
+- Invokes Gemini to produce an architectural explanation, breaking change risks, and verification checklist.
+
+---
+
+## 8. Security Intelligence & Security Gate
+
+- **OWASP Auditing**: Evaluates codebases against SQL/NoSQL injection, XSS, CSRF, insecure CORS, cookie attributes, and authentication bypasses.
+- **Secret Redaction**: Masks API keys (`AIza...`), GitHub tokens (`ghp_...`), JWT secrets, and bearer headers (`API_KEY=********`).
+- **Fix Security Gate**: Pre-screens all AI-generated code patches before preview or application for dangerous `eval()`, command injection, and unparameterized queries.
+
+---
+
+## 9. AI Fixes, Diff Preview & Test Execution
+
+1. **Targeted Fix Generation**: AI generates minimal patches instead of blind file rewrites.
+2. **Unified Diff Viewer**: Visualizes added lines in green (`+`), removed lines in red (`-`), and context lines in gray.
+3. **Stale Patch Protection**: Re-fetches the file from GitHub and checks that its SHA/content matches before applying (returns 409 if modified).
+4. **4-Scenario Test Generation**: Generates Regression, Happy Path, Edge Case, and Error Handling tests tailored to the project framework.
+5. **Allowlisted Test Runner**: Sandboxed runner executing `npm test`, `pytest`, `mvn test`, etc., capturing stdout, stderr, duration, and pass/fail counts.
+6. **AI Diagnosis**: Diagnoses root causes if a test fails.
+
+---
+
+## 10. AI Chat Modes
+
+1. **Codebase RAG Mode**: Grounds answers with exact file paths and line ranges (`file.js:10-35`).
+2. **Architecture Mode**: Injects `ArchitectureGraph` topology data (nodes, links, bottlenecks, cycles).
+3. **Security Mode**: Prioritizes route guards, auth middleware, and vulnerability analysis.
+4. **Debugging Mode**: Evaluates error handlers, recent static analysis issues, and call chains.
+5. **General AI Mode**: Broad software engineering guidance.
+
+---
+
+## 11. Tech Stack
+
+### Frontend
+- **Framework**: React 19 (`19.2.8`)
+- **Build Tool**: Vite 8 (`8.2.0`)
+- **Styling**: Vanilla CSS + Tailwind CSS 3 (`3.4.19`) with dark-mode tokens
+- **Graph Visualization**: `react-force-graph-2d` (`1.29.1`)
+- **Routing**: React Router DOM (`7.18.2`)
+- **HTTP Client**: Axios (`1.19.0`)
+- **Linting**: Oxlint (`1.75.0`)
+
+### Backend
+- **Runtime**: Node.js
+- **Framework**: Express (`4.19.2`)
+- **Database**: MongoDB with Mongoose (`8.5.0`)
+- **Security**: Helmet (`7.1.0`), CORS (`2.8.5`), Cookie-Parser (`1.4.6`), BcryptJS (`2.4.3`)
+- **Auth**: JSON Web Tokens (`jsonwebtoken 9.0.2`)
+- **AI Integration**: Google Gemini API (`gemini-2.5-flash`, `gemini-2.0-flash` fallback, `text-embedding-004`)
+- **Testing**: Node.js Native Test Runner (`node:test`)
+
+---
+
+## 12. API Architecture
+
+| Method | Endpoint | Description | Auth Required |
+|---|---|---|---|
+| `GET` | `/api/health` | API health check | No |
+| `POST` | `/api/auth/register` | User registration | No |
+| `POST` | `/api/auth/login` | User login & JWT issuance | No |
+| `GET` | `/api/auth/me` | Fetch authenticated profile | Yes |
+| `POST` | `/api/auth/logout` | User logout & cookie invalidation | Yes |
+| `GET` | `/api/github/connect` | Initiate GitHub OAuth handshake | Yes |
+| `GET` | `/api/github/callback` | GitHub OAuth callback | No |
+| `GET` | `/api/github/repositories` | List user's GitHub repositories | Yes |
+| `POST` | `/api/github/connect-repo` | Connect repository for analysis | Yes |
+| `POST` | `/api/analysis/:repositoryId/run` | Execute Gemini code analysis | Yes |
+| `GET` | `/api/analysis/:repositoryId/status` | Poll real-time analysis progress | Yes |
+| `GET` | `/api/analysis/:repositoryId/latest` | Fetch latest analysis report | Yes |
+| `GET` | `/api/analysis/:repositoryId/history` | List analysis history runs | Yes |
+| `POST` | `/api/analysis/result/:analysisId/issues/:issueId/create-pr` | Create branch PR on GitHub | Yes |
+| `POST` | `/api/analysis/result/:analysisId/share` | Generate public share token | Yes |
+| `GET` | `/api/shared/:shareToken` | Public view for shared analysis | No |
+| `GET` | `/api/architecture/:repositoryId` | Fetch or compute architecture graph | Yes |
+| `POST` | `/api/architecture/:repositoryId/explain` | AI explanation of architecture | Yes |
+| `POST` | `/api/knowledge/:repositoryId/index` | Index repository into RAG knowledge base | Yes |
+| `GET` | `/api/knowledge/:repositoryId/status` | Check RAG indexing status and chunk count | Yes |
+| `POST` | `/api/knowledge/:repositoryId/query` | Test semantic vector search directly | Yes |
+| `POST` | `/api/chat/:repositoryId` | Multi-mode AI chat with evidence citations | Yes |
+| `POST` | `/api/agents/:repositoryId/run` | Execute multi-agent audit | Yes |
+| `GET` | `/api/agents/:repositoryId/runs` | Fetch past agent run records | Yes |
+| `POST` | `/api/security/:repositoryId/analyze` | Dedicated Security Agent audit | Yes |
+| `POST` | `/api/impact/:repositoryId` | Calculate blast radius and AI explanation | Yes |
+| `GET` | `/api/impact/:repositoryId/files` | List analyzable dependency files | Yes |
+| `POST` | `/api/engineering/:repositoryId/generate-fix` | Generate AI Fix Proposal with diff & Security Gate | Yes |
+| `POST` | `/api/engineering/:repositoryId/validate-fix` | Validate fix freshness against repository (stale check) | Yes |
+| `POST` | `/api/engineering/:repositoryId/apply-fix` | Apply approved fix to isolated Git branch | Yes |
+| `POST` | `/api/engineering/:repositoryId/generate-tests` | Generate 4-scenario comprehensive unit test suite | Yes |
+| `POST` | `/api/engineering/:repositoryId/run-tests` | Execute allowlisted test runner | Yes |
+| `POST` | `/api/engineering/:repositoryId/verify-fix` | Run Verification Agent on fix + test results | Yes |
+| `POST` | `/api/engineering/:repositoryId/diagnose-failure` | AI root cause diagnosis of test errors | Yes |
+| `GET` | `/api/engineering/:repositoryId/audit-trail` | Fetch repository engineering activity timeline | Yes |
+| `POST` | `/api/engineering/:repositoryId/pr-readiness` | Calculate PR readiness scorecard | Yes |
+| `POST` | `/api/engineering/:repositoryId/revert` | Rollback / discard session changes | Yes |
+
+---
+
+## 13. Environment Variables
+
+### Backend (`server/.env`)
+
+```env
+# Server Configuration
+NODE_ENV=development
+PORT=5000
+CLIENT_URL=http://localhost:5173
+
+# Database Connection
+MONGO_URI=mongodb://localhost:27017/devplatform
+
+# Authentication Secrets
+JWT_SECRET=your_long_random_jwt_secret_here
+JWT_EXPIRES_IN=7d
+JWT_COOKIE_EXPIRES_DAYS=7
+
+# GitHub OAuth Integration
+GITHUB_CLIENT_ID=your_github_oauth_client_id
+GITHUB_CLIENT_SECRET=your_github_oauth_client_secret
+GITHUB_CALLBACK_URL=http://localhost:5000/api/github/callback
+
+# Google Gemini AI Integration
+GEMINI_API_KEY=your_google_gemini_api_key
+GEMINI_MODEL=gemini-2.5-flash
+GEMINI_FALLBACK_MODEL=gemini-2.0-flash
+GEMINI_EMBEDDING_MODEL=text-embedding-004
+```
+
+### Frontend (`client/.env`)
+
+```env
+VITE_API_BASE_URL=http://localhost:5000/api
+```
+
+---
+
+## 14. Local Development Setup
+
+### 1. Backend Setup
 
 ```bash
 cd server
-cp .env.example .env   # then fill in MONGO_URI and JWT_SECRET
+cp .env.example .env
+# Fill in MONGO_URI, JWT_SECRET, and GEMINI_API_KEY
 npm install
-npm run dev             # nodemon, http://localhost:5000
+npm run dev
 ```
 
-You'll need a MongoDB instance — either local (`mongod`) or a connection string
-from MongoDB Atlas — set as `MONGO_URI`.
+*Backend runs on `http://localhost:5000`.*
 
-### 2. Frontend
+### 2. Frontend Setup
 
 ```bash
 cd client
 cp .env.example .env
 npm install
-npm run dev              # http://localhost:5173
+npm run dev
 ```
 
-Open `http://localhost:5173`, register an account, and you'll land on the
-protected dashboard. Logging out or visiting `/dashboard` while unauthenticated
-redirects to `/login`.
+*Frontend runs on `http://localhost:5173`.*
 
-## GitHub OAuth setup
+### 3. Run Backend Test Suites
 
-1. On GitHub: **Settings → Developer settings → OAuth Apps → New OAuth App**.
-2. Fill in:
-   - **Application name:** anything, e.g. `DevPlatform (local)`
-   - **Homepage URL:** `http://localhost:5173`
-   - **Authorization callback URL:** `http://localhost:5000/api/github/callback`
-     (must match `GITHUB_CALLBACK_URL` in `server/.env` exactly)
-3. Register the app, then copy the **Client ID** and generate a **Client
-   secret**.
-4. Paste both into `server/.env` as `GITHUB_CLIENT_ID` and
-   `GITHUB_CLIENT_SECRET`.
-5. Restart the backend so the new env vars are picked up.
-
-### How the flow works
-
-```
-User clicks "Connect GitHub" (browser navigation, not fetch/axios)
- → GET /api/github/connect            [protect: reads the httpOnly cookie]
- → 302 redirect to GitHub's authorize screen, with a signed `state` param
- → user approves on GitHub
- → GitHub redirects to GET /api/github/callback?code=...&state=...
- → state is verified (binds this callback to the user who started the flow)
- → code is exchanged server-side for a GitHub access token (client secret
-   used only here, server-to-server)
- → GitHub profile is fetched and saved onto the User document
- → 302 redirect back to the frontend: /dashboard?github=connected
+```bash
+cd server
+npm test
 ```
 
-The `/connect` step is a real browser navigation (`window.location.href =
-".../github/connect"`), not an axios call — that's required for the OAuth
-redirect chain to work, and it's why that route is authenticated via the
-httpOnly cookie set at login rather than the Bearer token kept in
-`localStorage`.
+*Runs 34 tests across 5 test suites covering architecture extraction, Gemini fallback, PR generation, AST chunking, vector math, Security Gate, and allowlisted test execution.*
 
-## Required `.env` variables (Part 2 additions)
+---
 
-```
-GITHUB_CLIENT_ID=your_oauth_app_client_id
-GITHUB_CLIENT_SECRET=your_oauth_app_client_secret
-GITHUB_CALLBACK_URL=http://localhost:5000/api/github/callback
-```
+## 15. Security & Safety Model
 
-## Gemini AI analysis setup (Part 3)
+- **Zero Unprompted Modifications**: Code is never modified or pushed to GitHub without explicit developer preview and approval.
+- **Strict Secret Masking**: Credentials, tokens, and private keys are redacted (`API_KEY=********`).
+- **Command Allowlisting**: Only verified, safe test commands (`npm test`, `pytest`, `mvn test`) can be executed.
+- **Stale Patch Guards**: Compares file SHA hashes before committing to prevent applying stale patches.
+- **Branch Isolation**: All fixes and tests are written to dedicated `devmind/fix/...` branches, never directly to `main`.
 
-1. Get an API key from [Google AI Studio](https://aistudio.google.com/apikey).
-2. Paste it into `server/.env` as `GEMINI_API_KEY`. `GEMINI_MODEL` already
-   defaults to `gemini-2.5-flash`, so you only need to set it if you want a
-   different model.
-3. Restart the backend.
+---
 
-### How the analysis pipeline works
+## 16. Project Roadmap
 
-```
-User clicks "Analyze Repository" on a repo card
- → (if not already connected) POST /api/github/repositories/:githubId/connect
- → POST /api/analysis/:repositoryId/run                       [protect]
-    1. Verify the repository belongs to the requesting user
-    2. Fetch the repo's file tree from GitHub (git/trees, recursive)
-    3. Filter out node_modules, .git, dist/build, .env, lockfiles, binaries,
-       and anything outside a source-code extension allowlist
-    4. Fetch blob content for the remaining files, capped at 40 files /
-       40KB per file / 150K combined characters
-    5. Send the files to Gemini (gemini-2.5-flash) with a JSON response
-       schema (severity, category, file, line, description, recommendation,
-       suggestedFix) so the output is always structured, valid JSON
-    6. Compute an overall 0-100 score and severity counts from the issues
-    7. Save an Analysis document in MongoDB, linked to the Repository
- → frontend redirects to /dashboard/repositories/:repositoryId/analysis
-   and renders the score, severity breakdown, and issue details
-```
+### Implemented ✅
+- [x] Full-stack MERN platform with GitHub OAuth
+- [x] Gemini AI code review with transient error retry and model fallback
+- [x] 2D force-directed architecture graph with 9 categories & cycle detection
+- [x] Engineering Command Center Dashboard with 5 Health Pillars
+- [x] RAG Knowledge Base with AST/Symbol Chunking & VectorStore
+- [x] Multi-Agent Orchestrator (Bug, Security, Architecture, Test, Performance, Fix, Verification)
+- [x] 5-Mode AI Chat with Evidence Citations Drawer
+- [x] Impact Analysis & Reverse Dependency BFS Traversal
+- [x] AI Fix Agent, Security Gate & Unified Diff Preview
+- [x] 4-Scenario Test Generator & Allowlisted Test Runner
+- [x] Verification Agent & PR Readiness Scorecard
+- [x] GitHub Branch & Pull Request Automation
+- [x] Audit Action Trail & Session Rollback
 
-### Required `.env` variables (Part 3 additions)
+### Planned Future Capabilities 🚀
+- [ ] Multi-repository cross-service dependency mapping
+- [ ] Real-time WebSocket streaming for AI agent logs
+- [ ] Automated CI/CD GitHub Actions bot commenting on open PRs
+- [ ] Custom team architecture rules and compliance linter
 
-```
-GEMINI_API_KEY=your_gemini_api_key
-GEMINI_MODEL=gemini-2.5-flash
-```
+---
 
-## API reference
+## 17. Contributing
 
-| Method | Route | Access | Description |
-|---|---|---|---|
-| POST | `/api/auth/register` | Public | Create an account, returns user + JWT |
-| POST | `/api/auth/login` | Public | Authenticate, returns user + JWT |
-| POST | `/api/auth/logout` | Private | Clears the auth cookie |
-| GET | `/api/auth/me` | Private | Returns the current authenticated user |
-| GET | `/api/github/connect` | Private | Redirects to GitHub's OAuth consent screen |
-| GET | `/api/github/callback` | Public* | GitHub's redirect target; exchanges code, saves connection |
-| GET | `/api/github/profile` | Private | Connection status + public GitHub profile info |
-| GET | `/api/github/repositories` | Private | Live list of the user's GitHub repos, including analysis status |
-| POST | `/api/github/repositories/:githubId/connect` | Private | Persists a repo for future analysis |
-| DELETE | `/api/github/disconnect` | Private | Removes the stored GitHub connection |
-| POST | `/api/analysis/:repositoryId/run` | Private | Runs the full GitHub → Gemini → MongoDB pipeline for a connected repo |
-| GET | `/api/analysis/:repositoryId/latest` | Private | Most recent analysis for a repository (full issue detail) |
-| GET | `/api/analysis/:repositoryId/history` | Private | Past analyses for a repository (score/summary only, no issue detail) |
-| GET | `/api/analysis/result/:analysisId` | Private | A single analysis by id (full issue detail) |
-| GET | `/api/health` | Public | Health check |
+1. Fork the repository.
+2. Create a feature branch: `git checkout -b feature/amazing-feature`.
+3. Run tests: `cd server && npm test` and `cd client && npm run build`.
+4. Commit and push: `git push origin feature/amazing-feature`.
+5. Open a Pull Request.
 
-\* `/callback` has no `protect` middleware (GitHub's redirect can't carry your
-app's cookie/token), but it can't be used to act on an arbitrary account — the
-signed, short-lived `state` param is the only thing that ties it to a user.
+---
 
-Private routes require a Bearer token (`Authorization: Bearer <token>`) or the
-`token` httpOnly cookie set at login/register. Every `/api/analysis` and
-`/api/github` route additionally checks that the resource (repository/
-analysis) belongs to `req.user.id` — one user can never trigger or read
-another user's analyses.
+## 18. License
 
-## Verification performed
-
-**Part 1 (still passing):** register → duplicate-email rejection → login →
-wrong-password rejection → protected route blocked without a token →
-protected route succeeds with a token, no password leaked → logout → 404
-handling.
-
-**Part 2 (still passing):** ran 13 functional tests against the real Express
-app, routes, controllers, and middleware — OAuth `state` correctly binds the
-flow to the initiating user, tampered state is rejected, successful callback
-saves the connection, **the GitHub access token never appears** in any API
-response, repository listing/connect/disconnect all work and are scoped to
-the requesting user.
-
-**Part 3:** GitHub's and Gemini's APIs aren't reachable from this sandbox, so
-outbound calls at those two service boundaries were stubbed; everything else
-— routes, controllers, `analysisService`'s orchestration logic, the
-`Analysis`/`Repository` Mongoose models, and the file-filtering rules — ran
-as real code:
-- **22 unit tests** on `fileFilters.isAnalyzablePath` (node_modules, .git,
-  dist/build, .env variants, lockfiles, binaries, and unknown extensions are
-  all correctly excluded; real source files across JS/TS/Python/Go/etc. are
-  correctly included)
-- A Mongoose schema-validation check confirming the `Analysis` model rejects
-  invalid `severity`/`category` enum values and accepts a well-formed document
-- **10 end-to-end pipeline tests**: unauthenticated run rejected (401); a full
-  successful run correctly computes `overallScore` and severity counts from
-  the issues Gemini returned, persists an `Analysis` document, and updates
-  `Repository.lastAnalysis`/`lastAnalyzedAt`; `/latest`, `/history` (issue-free),
-  and `/result/:id` (full detail) all return the right shape; a second user is
-  correctly blocked (404) from another user's repository/analysis; a
-  no-analyzable-files result and a Gemini failure both persist a `status:
-  'failed'` `Analysis` record and surface the right error code (422 / 429)
-  instead of crashing
-- A **full-stack regression** chaining Part 1 → Part 2 → Part 3 together in one
-  run (register → login → connect GitHub → list repos → connect a repo → run
-  analysis → verify the repository listing now reflects `hasAnalysis` and the
-  new `repositoryId` field) to confirm nothing in the earlier parts broke
-- Frontend: clean `vite build` and a `vite preview` smoke test after each
-  change
-
-## Security notes
-
-**Part 2:**
-- The GitHub **client secret** never leaves `server/.env` — used only in the
-  server-to-server token exchange call.
-- The GitHub **access token** is stored with `select: false` and stripped
-  again in `toJSON` as defense in depth — it never appears in any API response.
-- Every GitHub-data route requires `protect`, and lookups are scoped to
-  `req.user.id`.
-- GitHub API errors map to proper status codes, including a dedicated **429**
-  for rate limits (via `X-RateLimit-Remaining: 0`).
-- Only repository *metadata* is persisted — never repository contents/code.
-
-**Part 3:**
-- The **Gemini API key** never leaves `server/.env` / the `geminiService`
-  module — it's not returned in any response and isn't exposed to the client.
-- Every `/api/analysis` route requires `protect`, and `analysisService`
-  re-verifies repository ownership (`Repository.findOne({ _id, user })`)
-  before touching GitHub or Gemini on the user's behalf — one user cannot
-  trigger analysis on, or read the results of, another user's repository.
-- Source fetching is capped (40 files / 40KB per file / 150K total
-  characters) so a large or malicious repository can't blow up token usage
-  or request time.
-- `.env`, lockfiles, and binaries are excluded before anything is ever read
-  from GitHub — secrets in a `.env` file are never sent to Gemini.
-- The Gemini system instruction explicitly tells the model to treat file
-  contents as untrusted data, not instructions, to reduce prompt-injection
-  risk from adversarial repository content.
-- Gemini's output is constrained by a JSON `responseSchema` and then
-  re-validated/normalized server-side (severity and category are checked
-  against fixed enums, `file` must be one of the paths actually sent, and
-  string fields are length-capped) before anything reaches MongoDB.
-- Gemini and GitHub API failures are caught, translated into proper HTTP
-  status codes (429 for rate limits, 422 for "no analyzable files", 502 for
-  upstream failures), and persisted as a `status: 'failed'` `Analysis`
-  record rather than left unrecorded or crashing the request.
-
-## What's intentionally not built yet
-
-- Redis, BullMQ, or any background job queue — analysis runs synchronously
-  within the request (fine for the file/size caps in place, but a real queue
-  would be the next step for larger repositories)
-- Docker
-- Pull request review
-- A cross-repository "Issues" aggregation view and a repository-independent
-  "Analyses" history page (both still placeholders in the dashboard nav —
-  per-repository history is available via `GET /api/analysis/:repositoryId/history`
-  and the "View last analysis" link on each repository card)
-
-These will be added in later parts without needing to restructure what's here.
-
-## Deploying to Vercel (single project, frontend + backend)
-
-This repo includes a root-level `vercel.json` and `api/index.js` so the whole
-app deploys as **one Vercel project**: the React app builds as static output,
-and the Express API runs as a single serverless function. Nothing in
-`server/src` was changed to make this work — `api/index.js` just wraps the
-existing app.
-
-### What was added for this
-
-- **`vercel.json`** (repo root) — builds `client`, serves `client/dist` as
-  static output, and routes `/api/*` to the serverless function; everything
-  else falls back to `index.html` for React Router.
-- **`api/index.js`** (repo root) — the actual Vercel Function. It imports the
-  unmodified `server/src/app.js` and calls it per-request.
-- **`server/src/config/db.js`** — updated to cache the MongoDB connection
-  promise at module scope instead of opening a new connection every call, and
-  to `throw` on failure instead of `process.exit(1)` (a serverless function
-  should never call `process.exit`). `server/server.js` (used for local `npm
-  run dev`) now does its own `try/catch` around `connectDB()` and exits itself
-  if the DB is unreachable, so local behavior is unchanged.
-
-### 1. MongoDB Atlas network access
-
-Vercel Functions don't have a fixed IP, so in Atlas: **Network Access → Add IP
-Address → Allow Access from Anywhere (0.0.0.0/0)**. (If you need tighter
-access control, use Atlas's Vercel integration instead of a raw IP allowlist.)
-
-### 2. Push this repo to GitHub, then import it in Vercel
-
-Vercel → **Add New → Project** → import the repo. Leave the **Root
-Directory** as the repo root (not `client` or `server`) — `vercel.json` at
-the root handles both halves.
-
-### 3. Set these environment variables in the Vercel project (Settings → Environment Variables)
-
-```
-NODE_ENV=production
-MONGO_URI=your_atlas_connection_string
-JWT_SECRET=a_long_random_secret
-JWT_EXPIRES_IN=7d
-JWT_COOKIE_EXPIRES_DAYS=7
-
-# Set these to your actual Vercel URL once you have it (redeploy after setting)
-CLIENT_URL=https://your-app.vercel.app
-GITHUB_CALLBACK_URL=https://your-app.vercel.app/api/github/callback
-
-GITHUB_CLIENT_ID=your_oauth_app_client_id
-GITHUB_CLIENT_SECRET=your_oauth_app_client_secret
-
-GEMINI_API_KEY=your_gemini_api_key
-GEMINI_MODEL=gemini-2.5-flash
-
-# Frontend build-time var - relative path works since both live on one domain
-VITE_API_BASE_URL=/api
-```
-
-### 4. Update the GitHub OAuth App's callback URL
-
-In GitHub → **Settings → Developer settings → OAuth Apps → your app**, set
-**Authorization callback URL** to
-`https://your-app.vercel.app/api/github/callback` (must exactly match
-`GITHUB_CALLBACK_URL` above). You can keep a second, separate OAuth App for
-local development if you don't want to keep flipping this back and forth.
-
-### 5. Deploy, then redeploy once you know the real URL
-
-The first deploy will get you a `*.vercel.app` URL. Put that exact URL into
-`CLIENT_URL` / `GITHUB_CALLBACK_URL` / the GitHub OAuth App / `VITE_API_BASE_URL`
-(if you prefer the absolute form) and redeploy so those env vars take effect
-— environment variables are baked in at build/deploy time, not read live.
-
-### Things worth knowing about this setup
-
-- **Function duration:** `vercel.json` sets `maxDuration: 60` for the API
-  function. Gemini analysis on a repo near the file cap can take a while; if
-  you see `FUNCTION_INVOCATION_TIMEOUT` (504) on `/api/analysis/:id/run`,
-  raise `maxDuration` (Hobby plans support up to 300s with Fluid Compute
-  enabled, Pro up to 800s) or lower `MAX_FILES` in `githubService.js`.
-- **Cold starts:** the first request after idle time will be slower (new
-  MongoDB connection, GitHub/Gemini clients initialized). Subsequent requests
-  on a warm function reuse the cached connection from the `db.js` change above.
-- **Cookies now work same-origin:** since the frontend and API share one
-  domain in this setup, the GitHub OAuth flow's httpOnly cookie no longer
-  crosses origins the way it would with the frontend and backend on separate
-  domains — no extra CORS/cookie configuration needed beyond what's already
-  in `app.js`.
-- **Local development is unaffected** — `npm run dev` in `server/` and
-  `client/` still works exactly as in Parts 1-3; the Vercel deployment path
-  (`api/index.js`) is a separate, additive entry point.
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
