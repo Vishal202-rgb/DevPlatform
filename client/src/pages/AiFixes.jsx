@@ -16,7 +16,7 @@ export default function AiFixes() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [issues, setIssues] = useState([]);
   const [repos, setRepos] = useState([]);
-  const [selectedRepoId, setSelectedRepoId] = useState('');
+  const [selectedRepoId, setSelectedRepoId] = useState(() => searchParams.get('repositoryId') || '');
   const [selectedIssue, setSelectedIssue] = useState(null);
   const [impactContext, setImpactContext] = useState(null);
   const [fixProposal, setFixProposal] = useState(null);
@@ -28,19 +28,89 @@ export default function AiFixes() {
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  const paramRepoId = searchParams.get('repositoryId');
-  const paramIssueId = searchParams.get('issueId');
+  // Helper to find repo by ID, _id, fullName, name, or githubId
+  const findRepo = useCallback((repoIdentifier, repoList = repos) => {
+    if (!repoIdentifier) return null;
+    const idStr = String(repoIdentifier).trim().toLowerCase();
+    return (
+      (repoList || []).find((r) => {
+        if (!r) return false;
+        const rRepoId = r.repositoryId ? String(r.repositoryId).toLowerCase() : null;
+        const rMongoId = r._id ? String(r._id).toLowerCase() : null;
+        const rId = r.id ? String(r.id).toLowerCase() : null;
+        const rGithubId = r.githubId ? String(r.githubId).toLowerCase() : null;
+        const rFullName = r.fullName ? String(r.fullName).toLowerCase() : null;
+        const rName = r.name ? String(r.name).toLowerCase() : null;
 
+        if (rRepoId && rRepoId === idStr) return true;
+        if (rMongoId && rMongoId === idStr) return true;
+        if (rId && rId === idStr) return true;
+        if (rGithubId && rGithubId === idStr) return true;
+        if (rFullName && rFullName === idStr) return true;
+        if (rName && rName === idStr) return true;
+
+        if (rFullName && (rFullName.endsWith('/' + idStr) || idStr.endsWith('/' + (rName || '')))) {
+          return true;
+        }
+
+        return false;
+      }) || null
+    );
+  }, [repos]);
+
+  const selectedRepo = useMemo(() => {
+    return findRepo(selectedRepoId);
+  }, [findRepo, selectedRepoId]);
+
+  // Robustly filter issues for the currently selected repository
   const repoIssues = useMemo(() => {
-    if (!selectedRepoId) return issues;
+    if (!selectedRepoId) return [];
+
+    const currentRepo = findRepo(selectedRepoId);
+    const currentMongoId = currentRepo?.repositoryId || currentRepo?._id || currentRepo?.id;
+    const currentIdStr = currentMongoId ? String(currentMongoId).toLowerCase() : String(selectedRepoId).toLowerCase();
+    const currentFullName = currentRepo?.fullName?.toLowerCase();
+    const currentName = currentRepo?.name?.toLowerCase();
+    const currentGithubId = currentRepo?.githubId ? String(currentRepo.githubId).toLowerCase() : null;
+
     return issues.filter((i) => {
-      const rId = i.repository?._id || i.repository?.id || i.repository;
-      return rId === selectedRepoId || String(rId) === String(selectedRepoId);
+      if (!i) return false;
+      const iRepo = i.repository;
+      if (!iRepo) return false;
+
+      // If repository on issue is a string or ID
+      if (typeof iRepo === 'string') {
+        const iStr = iRepo.toLowerCase();
+        if (iStr === currentIdStr) return true;
+        if (currentFullName && iStr === currentFullName) return true;
+        if (currentName && (iStr === currentName || iStr.endsWith('/' + currentName))) return true;
+        return false;
+      }
+
+      // If repository on issue is an object { id, fullName, ... } or { _id, name, ... }
+      const iRepoId = iRepo._id || iRepo.id || iRepo.repositoryId;
+      if (iRepoId) {
+        const iRepoIdStr = String(iRepoId).toLowerCase();
+        if (iRepoIdStr === currentIdStr) return true;
+        if (currentGithubId && iRepoIdStr === currentGithubId) return true;
+      }
+
+      const iFullName = (iRepo.fullName || iRepo.name || '')?.toLowerCase();
+      if (currentFullName && iFullName && iFullName === currentFullName) {
+        return true;
+      }
+
+      if (currentName && iFullName && (iFullName === currentName || iFullName.endsWith('/' + currentName))) {
+        return true;
+      }
+
+      return false;
     });
-  }, [issues, selectedRepoId]);
+  }, [issues, selectedRepoId, findRepo]);
 
   const handleSelectIssue = useCallback(async (issue, repoId) => {
-    const activeRepoId = repoId || selectedRepoId;
+    const activeRepo = findRepo(repoId || selectedRepoId);
+    const activeRepoId = activeRepo?.repositoryId || activeRepo?._id || repoId || selectedRepoId;
     setSelectedIssue(issue);
     setFixProposal(null);
     setApplyResult(null);
@@ -65,7 +135,29 @@ export default function AiFixes() {
         setImpactContext(null);
       }
     }
-  }, [selectedRepoId, setSearchParams]);
+  }, [selectedRepoId, findRepo, setSearchParams]);
+
+  const handleRepoChange = useCallback((newRepoId) => {
+    setSelectedRepoId(newRepoId);
+    setSelectedIssue(null);
+    setImpactContext(null);
+    setFixProposal(null);
+    setApplyResult(null);
+    setError('');
+    setSuccessMsg('');
+
+    // Synchronize URL query params immediately
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (newRepoId) {
+        next.set('repositoryId', newRepoId);
+      } else {
+        next.delete('repositoryId');
+      }
+      next.delete('issueId');
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -77,48 +169,97 @@ export default function AiFixes() {
       ]);
       const fetchedIssues = issuesRes || [];
       setIssues(fetchedIssues);
-      const connected = (reposRes || []).filter((r) => r.connected);
-      setRepos(connected);
+      const allRepos = reposRes || [];
+      const connected = allRepos.filter((r) => r.connected);
+      const repoList = connected.length > 0 ? connected : allRepos;
+      setRepos(repoList);
 
-      // Determine initial active repo
-      let targetRepoId = paramRepoId;
-      if (!targetRepoId && connected.length > 0) {
-        targetRepoId = connected[0].repositoryId || connected[0]._id;
+      const urlRepo = searchParams.get('repositoryId');
+      let targetRepo = null;
+      if (urlRepo) {
+        targetRepo = (repoList || []).find((r) => {
+          const rRepoId = r.repositoryId ? String(r.repositoryId).toLowerCase() : null;
+          const rMongoId = r._id ? String(r._id).toLowerCase() : null;
+          const rFullName = r.fullName ? String(r.fullName).toLowerCase() : null;
+          const rName = r.name ? String(r.name).toLowerCase() : null;
+          const uStr = urlRepo.toLowerCase();
+          return rRepoId === uStr || rMongoId === uStr || rFullName === uStr || rName === uStr;
+        });
       }
-      if (targetRepoId) {
-        setSelectedRepoId(targetRepoId);
+      if (!targetRepo && repoList.length > 0) {
+        targetRepo = repoList[0];
       }
 
-      // Auto-restore issue if issueId or target is present in URL params
-      if (paramIssueId && fetchedIssues.length > 0) {
-        const matched = fetchedIssues.find(
-          (i) =>
-            i._id === paramIssueId ||
-            i.id === paramIssueId ||
-            i.file === paramIssueId
-        );
-        if (matched) {
-          handleSelectIssue(matched, targetRepoId);
-        }
+      if (targetRepo) {
+        const resolvedId = targetRepo.repositoryId || targetRepo._id || targetRepo.fullName || targetRepo.name;
+        setSelectedRepoId(resolvedId);
       }
     } catch (err) {
       setError(err.message || 'Failed to load issues.');
     } finally {
       setIsLoading(false);
     }
-  }, [paramRepoId, paramIssueId, handleSelectIssue]);
+  }, []); // Run on initial mount
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
+  // Auto-restore issue from URL parameter when repoIssues change
+  useEffect(() => {
+    const paramIssueId = searchParams.get('issueId');
+    if (paramIssueId && repoIssues.length > 0) {
+      const matched = repoIssues.find(
+        (i) => i._id === paramIssueId || i.id === paramIssueId || i.file === paramIssueId
+      );
+      if (matched && (!selectedIssue || (selectedIssue._id !== matched._id && selectedIssue.id !== matched.id))) {
+        handleSelectIssue(matched, selectedRepoId);
+      }
+    }
+  }, [searchParams, repoIssues, selectedIssue, handleSelectIssue, selectedRepoId]);
+
+  // Refresh audit logs when selected repository changes
+  useEffect(() => {
+    const activeRepo = findRepo(selectedRepoId);
+    const targetRepoId = activeRepo?.repositoryId || activeRepo?._id || selectedRepoId;
+    if (targetRepoId) {
+      fetchAuditTrail(targetRepoId, 10)
+        .then((l) => setAuditLogs(l || []))
+        .catch(() => setAuditLogs([]));
+    } else {
+      setAuditLogs([]);
+    }
+  }, [selectedRepoId, findRepo]);
+
   const handleGenerateFix = async () => {
-    if (!selectedRepoId || !selectedIssue) return;
+    const activeRepo = findRepo(selectedRepoId);
+    const targetRepoId = activeRepo?.repositoryId || activeRepo?._id || selectedRepoId;
+
+    if (!targetRepoId || !selectedIssue) {
+      setError('Please select a repository and an issue.');
+      return;
+    }
+
+    // Defensive check: Ensure selected issue belongs to currently selected repository
+    const issueRepo = selectedIssue.repository;
+    const issueRepoId = issueRepo?._id || issueRepo?.id || issueRepo?.repositoryId || (typeof issueRepo === 'string' ? issueRepo : null);
+    const issueRepoFullName = (issueRepo?.fullName || issueRepo?.name || (typeof issueRepo === 'string' ? issueRepo : ''))?.toLowerCase();
+    const currentRepoFullName = (activeRepo?.fullName || activeRepo?.name || '')?.toLowerCase();
+    const currentRepoIdStr = String(targetRepoId).toLowerCase();
+
+    const matchesById = issueRepoId && String(issueRepoId).toLowerCase() === currentRepoIdStr;
+    const matchesByName = issueRepoFullName && currentRepoFullName && (issueRepoFullName === currentRepoFullName || issueRepoFullName.endsWith('/' + currentRepoFullName) || currentRepoFullName.endsWith('/' + issueRepoFullName));
+
+    if (!matchesById && !matchesByName) {
+      setError('Selected issue belongs to a different repository. Please select an issue from the active repository.');
+      return;
+    }
+
     setIsGenerating(true);
     setError('');
     setSuccessMsg('');
     try {
-      const proposal = await generateFixProposal(selectedRepoId, {
+      const proposal = await generateFixProposal(targetRepoId, {
         issueId: selectedIssue._id || selectedIssue.id,
         analysisId: selectedIssue.analysis || selectedIssue.analysisId,
         filePath: selectedIssue.file,
@@ -136,12 +277,15 @@ export default function AiFixes() {
   };
 
   const handleApplyFix = async () => {
-    if (!selectedRepoId || !fixProposal) return;
+    const activeRepo = findRepo(selectedRepoId);
+    const targetRepoId = activeRepo?.repositoryId || activeRepo?._id || selectedRepoId;
+
+    if (!targetRepoId || !fixProposal) return;
     setIsApplying(true);
     setError('');
     setSuccessMsg('');
     try {
-      const result = await applyApprovedFix(selectedRepoId, {
+      const result = await applyApprovedFix(targetRepoId, {
         issueId: fixProposal.issueId,
         analysisId: fixProposal.analysisId,
         filePath: fixProposal.filePath,
@@ -153,7 +297,7 @@ export default function AiFixes() {
       setSuccessMsg(`Fix committed to isolated branch "${result.branch}".`);
 
       // Refresh audit logs
-      fetchAuditTrail(selectedRepoId, 10).then((l) => setAuditLogs(l || []));
+      fetchAuditTrail(targetRepoId, 10).then((l) => setAuditLogs(l || [])).catch(() => {});
     } catch (err) {
       setError(err.message || 'Failed to apply fix.');
     } finally {
@@ -162,11 +306,14 @@ export default function AiFixes() {
   };
 
   const handleDiscardProposal = async () => {
-    if (selectedRepoId && fixProposal) {
-      await revertSessionChanges(selectedRepoId, {
+    const activeRepo = findRepo(selectedRepoId);
+    const targetRepoId = activeRepo?.repositoryId || activeRepo?._id || selectedRepoId;
+
+    if (targetRepoId && fixProposal) {
+      await revertSessionChanges(targetRepoId, {
         targetFile: fixProposal.filePath,
       }).catch(() => {});
-      fetchAuditTrail(selectedRepoId, 10).then((l) => setAuditLogs(l || []));
+      fetchAuditTrail(targetRepoId, 10).then((l) => setAuditLogs(l || [])).catch(() => {});
     }
     setFixProposal(null);
     setApplyResult(null);
@@ -194,20 +341,18 @@ export default function AiFixes() {
         <div className="flex flex-wrap items-center gap-2">
           {repos.length > 0 && (
             <select
-              value={selectedRepoId}
-              onChange={(e) => {
-                setSelectedRepoId(e.target.value);
-                setSelectedIssue(null);
-                setFixProposal(null);
-                setApplyResult(null);
-              }}
-              className="rounded-lg border border-graphite-750 bg-graphite-900 px-3 py-1.5 font-mono text-xs text-mist-100 outline-none focus:border-amber-400"
+              value={selectedRepo ? (selectedRepo.repositoryId || selectedRepo._id || selectedRepo.fullName || selectedRepo.name) : selectedRepoId}
+              onChange={(e) => handleRepoChange(e.target.value)}
+              className="rounded-lg border border-graphite-750 bg-graphite-900 px-3 py-1.5 font-mono text-xs text-mist-100 outline-none focus:border-amber-400 cursor-pointer"
             >
-              {repos.map((r) => (
-                <option key={r.repositoryId || r.githubId} value={r.repositoryId || r._id}>
-                  {r.fullName || r.name}
-                </option>
-              ))}
+              {repos.map((r) => {
+                const optVal = r.repositoryId || r._id || r.fullName || r.name;
+                return (
+                  <option key={r.repositoryId || r._id || r.githubId || r.fullName || optVal} value={optVal}>
+                    {r.fullName || r.name}
+                  </option>
+                );
+              })}
             </select>
           )}
 
@@ -488,7 +633,7 @@ export default function AiFixes() {
                           </a>
                         )}
                         <Link
-                          to={`/dashboard/tests?repositoryId=${selectedRepoId}&issueId=${selectedIssue?._id || selectedIssue?.id || ''}&filePath=${encodeURIComponent(selectedIssue?.file || '')}&branch=${encodeURIComponent(applyResult?.branch || selectedIssue?.fixBranch || '')}&analysisId=${encodeURIComponent(selectedIssue?.analysis || selectedIssue?.analysisId || '')}`}
+                          to={`/dashboard/tests?repositoryId=${selectedRepo?.repositoryId || selectedRepo?._id || selectedRepoId}&issueId=${selectedIssue?._id || selectedIssue?.id || ''}&filePath=${encodeURIComponent(selectedIssue?.file || '')}&branch=${encodeURIComponent(applyResult?.branch || selectedIssue?.fixBranch || '')}&analysisId=${encodeURIComponent(selectedIssue?.analysis || selectedIssue?.analysisId || '')}`}
                           className="rounded-lg border border-amber-400/40 bg-amber-400/10 px-3 py-1.5 text-xs font-semibold text-amber-300 hover:bg-amber-400/20 font-mono"
                         >
                           Generate Tests →
