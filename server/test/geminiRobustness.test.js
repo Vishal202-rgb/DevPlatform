@@ -7,7 +7,7 @@ const ApiError = require('../src/utils/ApiError');
 // Ensure API key is configured for tests
 env.geminiApiKey = env.geminiApiKey || 'test-mock-api-key-12345';
 env.geminiModel = 'gemini-2.5-flash';
-env.geminiFallbackModel = 'gemini-1.5-flash';
+env.geminiFallbackModel = 'gemini-2.0-flash';
 
 const sampleMockAnalysisResponse = {
   data: {
@@ -130,10 +130,10 @@ test('3. Temporary 503 / high-demand error on primary model falls back to fallba
       }
     );
 
-    assert.equal(modelUsed, 'gemini-1.5-flash');
+    assert.equal(modelUsed, 'gemini-2.0-flash');
     assert.ok(response?.data?.candidates);
     assert.ok(pathsCalled.some((p) => p.includes('gemini-2.5-flash')));
-    assert.ok(pathsCalled.some((p) => p.includes('gemini-1.5-flash')));
+    assert.ok(pathsCalled.some((p) => p.includes('gemini-2.0-flash')));
     assert.ok(statusUpdates.includes('Primary AI model unavailable. Trying fallback model...'));
   } finally {
     geminiService._geminiClient.post = originalPost;

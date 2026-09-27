@@ -28,5 +28,5 @@ module.exports = {
   // Gemini AI analysis (Part 3)
   geminiApiKey: process.env.GEMINI_API_KEY,
   geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
-  geminiFallbackModel: process.env.GEMINI_FALLBACK_MODEL || 'gemini-1.5-flash',
+  geminiFallbackModel: process.env.GEMINI_FALLBACK_MODEL || 'gemini-2.0-flash',
 };

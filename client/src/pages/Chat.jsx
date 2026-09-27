@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { useParams, Link, useLocation, useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 
@@ -12,11 +12,14 @@ const STARTER_PROMPTS = [
 
 export default function Chat() {
   const { repositoryId } = useParams();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const initialSentRef = useRef(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -55,6 +58,14 @@ export default function Chat() {
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   };
+
+  useEffect(() => {
+    const initialQuery = location.state?.initialMessage || searchParams.get('q');
+    if (initialQuery && !initialSentRef.current) {
+      initialSentRef.current = true;
+      sendQuery(initialQuery);
+    }
+  }, [location.state, searchParams]);
 
   const handleSubmit = (e) => {
     e.preventDefault();

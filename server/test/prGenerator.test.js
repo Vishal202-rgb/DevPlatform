@@ -8,7 +8,7 @@ const ApiError = require('../src/utils/ApiError');
 
 env.geminiApiKey = env.geminiApiKey || 'test-mock-api-key-12345';
 env.geminiModel = 'gemini-2.5-flash';
-env.geminiFallbackModel = 'gemini-1.5-flash';
+env.geminiFallbackModel = 'gemini-2.0-flash';
 
 test('AI PR Generator - geminiService.generatePullRequestDetails', async (t) => {
   const originalPost = geminiService._geminiClient.post;

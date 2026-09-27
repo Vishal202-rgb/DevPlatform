@@ -5,6 +5,7 @@ const Repository = require('../models/Repository');
 const Analysis = require('../models/Analysis');
 const githubService = require('./githubService');
 const geminiService = require('./geminiService');
+const architectureService = require('./architectureService');
 
 const SEVERITY_WEIGHTS = { critical: 15, high: 8, medium: 4, low: 1 };
 
@@ -176,6 +177,15 @@ const runAnalysis = async (userId, repositoryId) => {
     repository.lastAnalysis = analysisRecord._id;
     repository.lastAnalyzedAt = analysisRecord.createdAt;
     await repository.save();
+
+    // Auto-generate and cache architecture graph for this repository
+    try {
+      await architectureService.generateAndSaveArchitecture(repository, files, user);
+    } catch (archErr) {
+      // Non-fatal: architecture generation failure should never fail the main analysis
+      // eslint-disable-next-line no-console
+      console.warn(`[analysis] Background architecture graph generation: ${archErr.message}`);
+    }
 
     return analysisRecord;
   } catch (error) {

@@ -198,7 +198,7 @@ const RETRY_DELAYS_MS = [1000, 2000, 4000]; // 1s -> 2s -> 4s
  */
 const callGeminiWithRetryAndFallback = async (buildPayload, options = {}) => {
   const primaryModel = options.primaryModel || env.geminiModel || 'gemini-2.5-flash';
-  const fallbackModel = options.fallbackModel || env.geminiFallbackModel || 'gemini-1.5-flash';
+  const fallbackModel = options.fallbackModel || env.geminiFallbackModel || 'gemini-2.0-flash';
   const retryDelays = options.retryDelays || RETRY_DELAYS_MS;
   const maxRetries = retryDelays.length;
   const onStatusUpdate = options.onStatusUpdate || (() => {});
@@ -563,36 +563,37 @@ Rules:
 
 const generateArchitectureGraph = async (repoLabel, files, onStatusUpdate) => {
   if (!env.geminiApiKey) {
-    throw new ApiError(500, 'Gemini is not configured on the server (missing GEMINI_API_KEY).');
-  }
-
-  const fileBlocks = files
-    .map((f) => `=== FILE: ${f.path} ===\n${f.content}${f.truncated ? '\n... (truncated)' : ''}`)
-    .join('\n\n');
-
-  const prompt = `Repository: ${repoLabel}\n\n${fileBlocks}\n\nGenerate the architecture graph in JSON format.`;
-
-  const { response } = await callGeminiWithRetryAndFallback(
-    (_model) => ({
-      systemInstruction: { role: 'system', parts: [{ text: ARCH_SYSTEM_INSTRUCTION }] },
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.1,
-        maxOutputTokens: 8192,
-        responseMimeType: 'application/json',
-      },
-    }),
-    { onStatusUpdate }
-  );
-
-  const candidate = response.data?.candidates?.[0];
-  const rawText = candidate?.content?.parts?.map((p) => p.text).join('') || '';
-
-  if (!rawText.trim()) {
-    throw new ApiError(502, 'Gemini returned no architecture graph.');
+    return null;
   }
 
   try {
+    const fileBlocks = files
+      .slice(0, 30)
+      .map((f) => `=== FILE: ${f.path} ===\n${f.content}${f.truncated ? '\n... (truncated)' : ''}`)
+      .join('\n\n');
+
+    const prompt = `Repository: ${repoLabel}\n\n${fileBlocks}\n\nGenerate the architecture graph in JSON format.`;
+
+    const { response } = await callGeminiWithRetryAndFallback(
+      (_model) => ({
+        systemInstruction: { role: 'system', parts: [{ text: ARCH_SYSTEM_INSTRUCTION }] },
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.1,
+          maxOutputTokens: 8192,
+          responseMimeType: 'application/json',
+        },
+      }),
+      { onStatusUpdate, retryDelays: [500, 1000] }
+    );
+
+    const candidate = response.data?.candidates?.[0];
+    const rawText = candidate?.content?.parts?.map((p) => p.text).join('') || '';
+
+    if (!rawText.trim()) {
+      return null;
+    }
+
     const jsonStr = stripCodeFences(rawText);
     const parsed = JSON.parse(jsonStr);
     return {
@@ -600,7 +601,9 @@ const generateArchitectureGraph = async (repoLabel, files, onStatusUpdate) => {
       links: Array.isArray(parsed.links) ? parsed.links : [],
     };
   } catch (err) {
-    throw new ApiError(502, 'Gemini returned a response that could not be parsed as JSON.');
+    // eslint-disable-next-line no-console
+    console.warn(`[gemini] Architecture AI graph generation skipped (${sanitizeErrorMessage(err.message)}). Using static code graph.`);
+    return null;
   }
 };
 
