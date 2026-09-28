@@ -20,6 +20,7 @@ const auditLogSchema = new mongoose.Schema(
         'fix_generated',
         'impact_analyzed',
         'tests_generated',
+        'tests_applied',
         'tests_executed',
         'verification_completed',
         'fix_applied',

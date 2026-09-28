@@ -1,7 +1,9 @@
 const { test, describe } = require('node:test');
 const assert = require('node:assert');
+const mongoose = require('mongoose');
 const testRunnerService = require('../src/services/testRunnerService');
 const verificationAgentService = require('../src/services/verificationAgentService');
+const AuditLog = require('../src/models/AuditLog');
 
 describe('DevMind Part 3 - Security Gate & Code Fix Checks', () => {
   // Test Security Gate regex rules
@@ -123,5 +125,68 @@ describe('DevMind Part 3 - Test Execution Allowlist & Verification', () => {
         return true;
       }
     );
+  });
+});
+
+describe('DevMind Part 3 - AuditLog Action Enum Validation', () => {
+  const sampleUserId = new mongoose.Types.ObjectId();
+  const sampleRepoId = new mongoose.Types.ObjectId();
+
+  const allowedActions = [
+    'fix_generated',
+    'impact_analyzed',
+    'tests_generated',
+    'tests_applied',
+    'tests_executed',
+    'verification_completed',
+    'fix_applied',
+    'pr_created',
+    'rollback_performed',
+  ];
+
+  for (const action of allowedActions) {
+    test(`validates successfully for allowed action "${action}"`, () => {
+      const doc = new AuditLog({
+        repository: sampleRepoId,
+        user: sampleUserId,
+        action,
+        status: 'success',
+        targetFile: 'src/example.js',
+        message: `Action ${action} performed`,
+      });
+
+      const error = doc.validateSync();
+      assert.strictEqual(error, undefined, `Expected action "${action}" to pass schema validation`);
+    });
+  }
+
+  test('validates specifically that tests_applied passes without schema validation error', () => {
+    const doc = new AuditLog({
+      repository: sampleRepoId,
+      user: sampleUserId,
+      action: 'tests_applied',
+      status: 'success',
+      targetFile: 'src/utils/math.test.js',
+      details: { branchName: 'devmind/tests/math', commitMessage: 'test: add test suite' },
+      message: 'Applied test suite to src/utils/math.test.js',
+    });
+
+    const error = doc.validateSync();
+    assert.strictEqual(error, undefined);
+    assert.strictEqual(doc.action, 'tests_applied');
+  });
+
+  test('rejects invalid action with Mongoose ValidationError', () => {
+    const doc = new AuditLog({
+      repository: sampleRepoId,
+      user: sampleUserId,
+      action: 'invalid_action_name',
+      status: 'success',
+    });
+
+    const error = doc.validateSync();
+    assert.ok(error, 'Expected validation error for invalid action');
+    assert.ok(error.errors.action, 'Expected error on action field');
+    assert.strictEqual(error.errors.action.kind, 'enum');
   });
 });
