@@ -256,7 +256,7 @@ export default function AiFixes() {
     }
 
     setIsGenerating(true);
-    setError('');
+    setError(null);
     setSuccessMsg('');
     try {
       const proposal = await generateFixProposal(targetRepoId, {
@@ -270,7 +270,40 @@ export default function AiFixes() {
       });
       setFixProposal(proposal);
     } catch (err) {
-      setError(err.message || 'Failed to generate AI fix proposal.');
+      const rawMsg = err.response?.data?.message || err.message || 'Failed to generate AI fix proposal.';
+      const cleanMsg = typeof rawMsg === 'string'
+        ? rawMsg
+            .replace(/key=[a-zA-Z0-9_\-]+/gi, 'key=[REDACTED]')
+            .replace(/AIza[a-zA-Z0-9_\-]{35}/g, '[REDACTED_API_KEY]')
+            .replace(/models\/[a-zA-Z0-9_\-\.]+/gi, 'configured Gemini model')
+        : 'Failed to generate AI fix proposal.';
+
+      const code =
+        err.code ||
+        err.response?.data?.code ||
+        (err.statusCode === 503 ||
+        cleanMsg.toLowerCase().includes('temporarily busy') ||
+        cleanMsg.toLowerCase().includes('temporarily unavailable') ||
+        cleanMsg.toLowerCase().includes('high demand')
+          ? 'AI_PROVIDER_TEMPORARILY_UNAVAILABLE'
+          : err.statusCode === 429 || cleanMsg.toLowerCase().includes('quota')
+          ? 'AI_QUOTA_EXCEEDED'
+          : err.statusCode === 404 || cleanMsg.toLowerCase().includes('unavailable') || cleanMsg.toLowerCase().includes('deprecated')
+          ? 'AI_MODEL_UNAVAILABLE'
+          : err.statusCode === 401 || err.statusCode === 403 || cleanMsg.toLowerCase().includes('authentication')
+          ? 'AI_AUTH_ERROR'
+          : 'AI_PROVIDER_ERROR');
+
+      const finalMessage =
+        code === 'AI_PROVIDER_TEMPORARILY_UNAVAILABLE'
+          ? 'AI service is temporarily busy. Please try again in a few moments.'
+          : cleanMsg;
+
+      setError({
+        code,
+        message: finalMessage,
+        model: err.model || err.response?.data?.model,
+      });
     } finally {
       setIsGenerating(false);
     }
@@ -282,7 +315,7 @@ export default function AiFixes() {
 
     if (!targetRepoId || !fixProposal) return;
     setIsApplying(true);
-    setError('');
+    setError(null);
     setSuccessMsg('');
     try {
       const result = await applyApprovedFix(targetRepoId, {
@@ -299,7 +332,35 @@ export default function AiFixes() {
       // Refresh audit logs
       fetchAuditTrail(targetRepoId, 10).then((l) => setAuditLogs(l || [])).catch(() => {});
     } catch (err) {
-      setError(err.message || 'Failed to apply fix.');
+      const rawMsg = err.response?.data?.message || err.message || 'Failed to apply fix.';
+      const cleanMsg = typeof rawMsg === 'string'
+        ? rawMsg
+            .replace(/key=[a-zA-Z0-9_\-]+/gi, 'key=[REDACTED]')
+            .replace(/AIza[a-zA-Z0-9_\-]{35}/g, '[REDACTED_API_KEY]')
+            .replace(/models\/[a-zA-Z0-9_\-\.]+/gi, 'configured Gemini model')
+        : 'Failed to apply fix.';
+
+      const code =
+        err.code ||
+        err.response?.data?.code ||
+        (err.statusCode === 503 ||
+        cleanMsg.toLowerCase().includes('temporarily busy') ||
+        cleanMsg.toLowerCase().includes('temporarily unavailable') ||
+        cleanMsg.toLowerCase().includes('high demand')
+          ? 'AI_PROVIDER_TEMPORARILY_UNAVAILABLE'
+          : err.statusCode === 429 || cleanMsg.toLowerCase().includes('quota')
+          ? 'AI_QUOTA_EXCEEDED'
+          : 'AI_PROVIDER_ERROR');
+
+      const finalMessage =
+        code === 'AI_PROVIDER_TEMPORARILY_UNAVAILABLE'
+          ? 'AI service is temporarily busy. Please try again in a few moments.'
+          : cleanMsg;
+
+      setError({
+        code,
+        message: finalMessage,
+      });
     } finally {
       setIsApplying(false);
     }
@@ -376,8 +437,66 @@ export default function AiFixes() {
       </div>
 
       {error && (
-        <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs sm:text-sm text-rose-300 font-mono animate-fade-in">
-          ⚠️ {error}
+        <div
+          className={`rounded-xl border p-4 text-xs sm:text-sm font-mono animate-fade-in ${
+            (typeof error === 'object' && error?.code === 'AI_PROVIDER_TEMPORARILY_UNAVAILABLE') || (typeof error === 'string' && error.toLowerCase().includes('busy'))
+              ? 'border-amber-500/40 bg-amber-500/10 text-amber-300'
+              : (typeof error === 'object' && error?.code === 'AI_QUOTA_EXCEEDED') || (typeof error === 'string' && error.toLowerCase().includes('quota'))
+              ? 'border-amber-500/40 bg-amber-500/10 text-amber-300'
+              : (typeof error === 'object' && error?.code === 'AI_MODEL_UNAVAILABLE') || (typeof error === 'string' && error.toLowerCase().includes('unavailable'))
+              ? 'border-orange-500/40 bg-orange-500/10 text-orange-300'
+              : (typeof error === 'object' && error?.code === 'AI_AUTH_ERROR') || (typeof error === 'string' && error.toLowerCase().includes('auth'))
+              ? 'border-rose-500/40 bg-rose-500/10 text-rose-300'
+              : 'border-rose-500/30 bg-rose-500/10 text-rose-300'
+          }`}
+        >
+          <div className="flex items-start gap-3">
+            <span className="text-lg leading-none mt-0.5">
+              {(typeof error === 'object' && (error?.code === 'AI_PROVIDER_TEMPORARILY_UNAVAILABLE' || error?.code === 'AI_QUOTA_EXCEEDED')) || (typeof error === 'string' && (error.toLowerCase().includes('busy') || error.toLowerCase().includes('quota')))
+                ? '⏳'
+                : (typeof error === 'object' && error?.code === 'AI_MODEL_UNAVAILABLE') || (typeof error === 'string' && error.toLowerCase().includes('unavailable'))
+                ? '⚠️'
+                : '❌'}
+            </span>
+            <div className="space-y-1 flex-1">
+              <div className="font-semibold flex items-center justify-between">
+                <span>
+                  {(typeof error === 'object' && error?.code === 'AI_PROVIDER_TEMPORARILY_UNAVAILABLE') || (typeof error === 'string' && error.toLowerCase().includes('busy'))
+                    ? 'AI Service Temporarily Busy'
+                    : (typeof error === 'object' && error?.code === 'AI_QUOTA_EXCEEDED') || (typeof error === 'string' && error.toLowerCase().includes('quota'))
+                    ? 'AI Quota Limit Exceeded'
+                    : (typeof error === 'object' && error?.code === 'AI_MODEL_UNAVAILABLE') || (typeof error === 'string' && error.toLowerCase().includes('unavailable'))
+                    ? 'AI Model Unavailable'
+                    : (typeof error === 'object' && error?.code === 'AI_AUTH_ERROR') || (typeof error === 'string' && error.toLowerCase().includes('auth'))
+                    ? 'Gemini Authentication Error'
+                    : 'AI Fix Request Failed'}
+                </span>
+                {typeof error === 'object' && error?.model && (
+                  <span className="text-[10px] rounded bg-graphite-800 px-2 py-0.5 text-mist-400 border border-graphite-700 font-mono">
+                    Model: {error.model}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-mist-300 font-sans leading-relaxed">
+                {typeof error === 'string' ? error : error.message}
+              </p>
+              {((typeof error === 'object' && error?.code === 'AI_PROVIDER_TEMPORARILY_UNAVAILABLE') || (typeof error === 'string' && error.toLowerCase().includes('busy'))) && (
+                <p className="text-[11px] text-amber-400/90 font-sans pt-1">
+                  💡 AI service is temporarily experiencing high demand. Please try again in a few moments.
+                </p>
+              )}
+              {((typeof error === 'object' && error?.code === 'AI_QUOTA_EXCEEDED') || (typeof error === 'string' && error.toLowerCase().includes('quota'))) && (
+                <p className="text-[11px] text-amber-400/90 font-sans pt-1">
+                  💡 Tip: Free-tier rate limit or quota was reached. Please retry in a few moments, or configure a higher-capacity Gemini model in server configuration.
+                </p>
+              )}
+              {((typeof error === 'object' && error?.code === 'AI_MODEL_UNAVAILABLE') || (typeof error === 'string' && error.toLowerCase().includes('unavailable'))) && (
+                <p className="text-[11px] text-orange-400/90 font-sans pt-1">
+                  💡 Tip: The configured AI model is no longer active. Check <code className="text-mist-100 font-mono">GEMINI_PRIMARY_MODEL</code> and <code className="text-mist-100 font-mono">GEMINI_FALLBACK_MODEL</code> in server settings.
+                </p>
+              )}
+            </div>
+          </div>
         </div>
       )}
 

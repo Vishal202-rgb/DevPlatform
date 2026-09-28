@@ -107,8 +107,8 @@ export default function Settings() {
                   desc: 'Enhanced reasoning for complex architectural graphs.',
                 },
                 {
-                  id: 'gemini-2.0-flash',
-                  name: 'Gemini 2.0 Flash',
+                  id: 'gemini-3.8-flash',
+                  name: 'Gemini 3.8 Flash',
                   badge: 'Fallback',
                   desc: 'High-availability automated failover model.',
                 },

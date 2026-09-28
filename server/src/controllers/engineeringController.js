@@ -16,6 +16,7 @@ const generateFixProposal = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     message: 'Fix proposal generated successfully',
+    model: proposal.model,
     data: proposal,
   });
 });

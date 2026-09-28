@@ -11,6 +11,8 @@ const errorHandler = (err, req, res, _next) => {
   let statusCode = err.statusCode || 500;
   let message = err.message || 'Internal server error';
   let details = err.details;
+  let code = err.code;
+  let model = err.model;
 
   // Mongoose bad ObjectId
   if (err.name === 'CastError') {
@@ -23,6 +25,7 @@ const errorHandler = (err, req, res, _next) => {
     statusCode = 409;
     const field = Object.keys(err.keyValue || {})[0];
     message = field ? `${field} already in use` : 'Duplicate field value';
+    code = undefined;
   }
 
   // Mongoose validation error
@@ -62,7 +65,9 @@ const errorHandler = (err, req, res, _next) => {
 
   res.status(statusCode).json({
     success: false,
+    ...(code ? { code } : {}),
     message: sanitize(message),
+    ...(model ? { model } : {}),
     ...(details ? { details: Array.isArray(details) ? details.map(sanitize) : sanitize(details) } : {}),
   });
 };

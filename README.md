@@ -294,7 +294,7 @@ GitHub Tree / Blobs → Path Filtering → Incremental SHA-256 Hash → Logical 
 - **Database**: MongoDB with Mongoose (`8.5.0`)
 - **Security**: Helmet (`7.1.0`), CORS (`2.8.5`), Cookie-Parser (`1.4.6`), BcryptJS (`2.4.3`)
 - **Auth**: JSON Web Tokens (`jsonwebtoken 9.0.2`)
-- **AI Integration**: Google Gemini API (`gemini-2.5-flash`, `gemini-2.0-flash` fallback, `text-embedding-004`)
+- **AI Integration**: Google Gemini API (`gemini-2.5-flash`, `gemini-3.8-flash` fallback, `text-embedding-004`)
 - **Testing**: Node.js Native Test Runner (`node:test`)
 
 ---
@@ -368,8 +368,9 @@ GITHUB_CALLBACK_URL=http://localhost:5000/api/github/callback
 
 # Google Gemini AI Integration
 GEMINI_API_KEY=your_google_gemini_api_key
+GEMINI_PRIMARY_MODEL=gemini-2.5-flash
 GEMINI_MODEL=gemini-2.5-flash
-GEMINI_FALLBACK_MODEL=gemini-2.0-flash
+GEMINI_FALLBACK_MODEL=gemini-3.8-flash
 GEMINI_EMBEDDING_MODEL=text-embedding-004
 ```
 

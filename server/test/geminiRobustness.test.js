@@ -7,7 +7,7 @@ const ApiError = require('../src/utils/ApiError');
 // Ensure API key is configured for tests
 env.geminiApiKey = env.geminiApiKey || 'test-mock-api-key-12345';
 env.geminiModel = 'gemini-2.5-flash';
-env.geminiFallbackModel = 'gemini-2.0-flash';
+env.geminiFallbackModel = 'gemini-3.8-flash';
 
 const sampleMockAnalysisResponse = {
   data: {
@@ -64,14 +64,14 @@ test('1. Successful Gemini analysis on primary model on first attempt', async ()
   }
 });
 
-test('2. Temporary 429 error triggers retry with exponential backoff and succeeds', async () => {
+test('2. 429 RESOURCE_EXHAUSTED immediately triggers fallback to gemini-3.8-flash without retrying exhausted primary', async () => {
   const originalPost = geminiService._geminiClient.post;
-  let attempts = 0;
+  const pathsCalled = [];
   const statusUpdates = [];
 
   geminiService._geminiClient.post = async (path, _body) => {
-    attempts++;
-    if (attempts === 1) {
+    pathsCalled.push(path);
+    if (path.includes('gemini-2.5-flash')) {
       const error = new Error('Resource exhausted');
       error.response = {
         status: 429,
@@ -79,6 +79,7 @@ test('2. Temporary 429 error triggers retry with exponential backoff and succeed
       };
       throw error;
     }
+    // Fallback model gemini-3.8-flash succeeds
     return sampleMockAnalysisResponse;
   };
 
@@ -86,16 +87,17 @@ test('2. Temporary 429 error triggers retry with exponential backoff and succeed
     const files = [{ path: 'src/auth.js', content: 'const token = "secret";' }];
     const result = await geminiService.analyzeCode('test/repo', files, (msg) => statusUpdates.push(msg));
 
-    assert.equal(attempts, 2, 'Should succeed on attempt 2 after retry');
-    assert.equal(result.issues.length, 1);
-    assert.equal(result.modelUsed, 'gemini-2.5-flash');
-    assert.equal(statusUpdates.includes('AI model is temporarily busy. Retrying...'), true);
+    // Primary model should be called exactly once before immediate fallback
+    const primaryCalls = pathsCalled.filter((p) => p.includes('gemini-2.5-flash'));
+    assert.equal(primaryCalls.length, 1, 'Primary model should fail once and immediately switch without retrying');
+    assert.equal(result.modelUsed, 'gemini-3.8-flash');
+    assert.ok(pathsCalled.some((p) => p.includes('gemini-3.8-flash')));
   } finally {
     geminiService._geminiClient.post = originalPost;
   }
 });
 
-test('3. Temporary 503 / high-demand error on primary model falls back to fallback model', async () => {
+test('3. Temporary 503 / high-demand error on primary model falls back to gemini-3.8-flash', async () => {
   const originalPost = geminiService._geminiClient.post;
   const pathsCalled = [];
   const statusUpdates = [];
@@ -130,10 +132,10 @@ test('3. Temporary 503 / high-demand error on primary model falls back to fallba
       }
     );
 
-    assert.equal(modelUsed, 'gemini-2.0-flash');
+    assert.equal(modelUsed, 'gemini-3.8-flash');
     assert.ok(response?.data?.candidates);
     assert.ok(pathsCalled.some((p) => p.includes('gemini-2.5-flash')));
-    assert.ok(pathsCalled.some((p) => p.includes('gemini-2.0-flash')));
+    assert.ok(pathsCalled.some((p) => p.includes('gemini-3.8-flash')));
     assert.ok(statusUpdates.includes('Primary AI model unavailable. Trying fallback model...'));
   } finally {
     geminiService._geminiClient.post = originalPost;
@@ -168,28 +170,23 @@ test('4. Invalid API key error fails immediately without retrying', async () => 
     assert.equal(attempts, 1, 'Should NOT retry permanent error');
     assert.equal(statusUpdates.length, 0, 'Should not emit retry or fallback status');
     assert.equal(err.statusCode, 400);
+    assert.equal(err.code, 'AI_AUTH_ERROR');
     assert.ok(err.message.includes('Gemini API key is invalid'));
   } finally {
     geminiService._geminiClient.post = originalPost;
   }
 });
 
-test('5. All models unavailable throws proper transient 503 error', async () => {
+test('5. Quota exhaustion across both primary and fallback returns clean AI_QUOTA_EXCEEDED error', async () => {
   const originalPost = geminiService._geminiClient.post;
-  let totalAttempts = 0;
+  let attempts = 0;
 
   geminiService._geminiClient.post = async (_path, _body) => {
-    totalAttempts++;
-    const error = new Error('High demand');
+    attempts++;
+    const error = new Error('Resource exhausted');
     error.response = {
-      status: 503,
-      data: {
-        error: {
-          code: 503,
-          message: 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.',
-          status: 'UNAVAILABLE',
-        },
-      },
+      status: 429,
+      data: { error: { code: 429, message: 'RESOURCE_EXHAUSTED', status: 'RESOURCE_EXHAUSTED' } },
     };
     throw error;
   };
@@ -201,15 +198,13 @@ test('5. All models unavailable throws proper transient 503 error', async () => 
         retryDelays: [5, 10, 15],
       }
     );
-    assert.fail('Should have thrown an error');
+    assert.fail('Should have thrown quota error');
   } catch (err) {
-    // 2 models * 4 attempts each = 8 total attempts
-    assert.equal(totalAttempts, 8);
-    assert.equal(err.statusCode, 503);
-    assert.equal(
-      err.message,
-      'AI analysis is temporarily unavailable. Please try again in a few moments.'
-    );
+    // Exactly 2 attempts: 1 for primary model, 1 for fallback model (no wasteful 3-4x loops)
+    assert.equal(attempts, 2, 'Should immediately failover and terminate on quota error');
+    assert.equal(err.statusCode, 429);
+    assert.equal(err.code, 'AI_QUOTA_EXCEEDED');
+    assert.ok(err.message.includes('quota is currently exhausted'));
   } finally {
     geminiService._geminiClient.post = originalPost;
   }
@@ -452,5 +447,82 @@ test('13. Concurrency guard safely recovers stale lock and permits fresh analysi
     analysisService.activeAnalysisJobs.delete(repoId);
   }
 });
+
+test('14. Primary 429 quota exhausted followed by fallback 503 returns AI_PROVIDER_TEMPORARILY_UNAVAILABLE with max 1 retry', async () => {
+  const originalPost = geminiService._geminiClient.post;
+  const pathsCalled = [];
+
+  geminiService._geminiClient.post = async (path, _body) => {
+    pathsCalled.push(path);
+    if (path.includes('gemini-2.5-flash')) {
+      const error = new Error('Resource exhausted');
+      error.response = {
+        status: 429,
+        data: { error: { code: 429, message: 'Resource has been exhausted (rate limit).', status: 'RESOURCE_EXHAUSTED' } },
+      };
+      throw error;
+    }
+    // Fallback model returns 503 high demand
+    const error503 = new Error('High demand');
+    error503.response = {
+      status: 503,
+      data: {
+        error: {
+          code: 503,
+          message: 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.',
+          status: 'UNAVAILABLE',
+        },
+      },
+    };
+    throw error503;
+  };
+
+  try {
+    await geminiService.callGeminiWithRetryAndFallback(
+      (model) => ({ contents: [{ role: 'user', parts: [{ text: 'test' }] }] }),
+      { retryDelays: [5] }
+    );
+    assert.fail('Should have thrown 503 error');
+  } catch (err) {
+    const primaryCalls = pathsCalled.filter((p) => p.includes('gemini-2.5-flash'));
+    const fallbackCalls = pathsCalled.filter((p) => p.includes('gemini-3.8-flash'));
+
+    // Primary: 1 call (no retry on 429)
+    assert.equal(primaryCalls.length, 1, 'Primary model must failover immediately on 429 without retries');
+    // Fallback: 2 calls max (initial attempt + max 1 retry on 503)
+    assert.equal(fallbackCalls.length, 2, 'Fallback model must retry at most once on 503');
+
+    assert.equal(err.statusCode, 503);
+    assert.equal(err.code, 'AI_PROVIDER_TEMPORARILY_UNAVAILABLE');
+    assert.equal(err.message, 'AI service is temporarily busy. Please try again in a few moments.');
+  } finally {
+    geminiService._geminiClient.post = originalPost;
+  }
+});
+
+test('15. isServiceUnavailableError correctly identifies all 503 and high-demand variations', () => {
+  assert.equal(geminiService.isServiceUnavailableError({ response: { status: 503, data: {} } }), true);
+  assert.equal(
+    geminiService.isServiceUnavailableError({
+      response: {
+        status: 500,
+        data: { error: { message: 'This model is currently experiencing high demand.' } },
+      },
+    }),
+    true
+  );
+  assert.equal(
+    geminiService.isServiceUnavailableError({
+      response: {
+        status: 500,
+        data: { error: { status: 'UNAVAILABLE' } },
+      },
+    }),
+    true
+  );
+  assert.equal(geminiService.isServiceUnavailableError({ response: { status: 429, data: {} } }), false);
+  assert.equal(geminiService.isServiceUnavailableError({ response: { status: 400, data: {} } }), false);
+});
+
 
 

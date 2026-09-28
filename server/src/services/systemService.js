@@ -187,9 +187,21 @@ const runHealthChecks = (req) => {
   }
 
   if (env.geminiFallbackModel) {
-    checks.push(
-      check('gemini_fallback_model', 'GEMINI_FALLBACK_MODEL', 'ok', `Configured fallback: "${env.geminiFallbackModel}"`)
-    );
+    if (KNOWN_DEPRECATED_GEMINI_MODELS.includes(env.geminiFallbackModel)) {
+      checks.push(
+        check(
+          'gemini_fallback_model',
+          'GEMINI_FALLBACK_MODEL',
+          'warning',
+          `"${env.geminiFallbackModel}" is retired or deprecated`,
+          'Update GEMINI_FALLBACK_MODEL to an active model such as gemini-3.8-flash.'
+        )
+      );
+    } else {
+      checks.push(
+        check('gemini_fallback_model', 'GEMINI_FALLBACK_MODEL', 'ok', `Configured fallback: "${env.geminiFallbackModel}"`)
+      );
+    }
   }
 
   // --- NODE_ENV vs the platform's own reported environment (Vercel sets VERCEL_ENV automatically) ---

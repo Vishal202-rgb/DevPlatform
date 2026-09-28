@@ -191,7 +191,10 @@ export default function Tests() {
       saveSessionState({ generatedSuite: suite });
       setSuccessMsg('4-Scenario test suite generated successfully.');
     } catch (err) {
-      setError(err.message || 'Failed to generate test suite.');
+      const msg = err.code === 'AI_PROVIDER_TEMPORARILY_UNAVAILABLE' || err.statusCode === 503
+        ? 'AI service is temporarily busy. Please try again in a few moments.'
+        : err.message || 'Failed to generate test suite.';
+      setError(msg);
     } finally {
       setIsGenerating(false);
     }
@@ -218,7 +221,10 @@ export default function Tests() {
       }
       setSuccessMsg(`Test suite committed to branch "${result.branch}".`);
     } catch (err) {
-      setError(err.message || 'Failed to apply test suite to repository branch.');
+      const msg = err.code === 'AI_PROVIDER_TEMPORARILY_UNAVAILABLE' || err.statusCode === 503
+        ? 'AI service is temporarily busy. Please try again in a few moments.'
+        : err.message || 'Failed to apply test suite to repository branch.';
+      setError(msg);
     } finally {
       setIsApplyingTests(false);
     }
@@ -259,7 +265,10 @@ export default function Tests() {
       setVerificationResult(verification);
       saveSessionState({ verificationResult: verification });
     } catch (err) {
-      setError(err.message || 'Verification failed.');
+      const msg = err.code === 'AI_PROVIDER_TEMPORARILY_UNAVAILABLE' || err.statusCode === 503
+        ? 'AI service is temporarily busy. Please try again in a few moments.'
+        : err.message || 'Verification failed.';
+      setError(msg);
     } finally {
       setIsVerifying(false);
     }
@@ -276,7 +285,10 @@ export default function Tests() {
       setDiagnosis(diag.diagnosis);
       saveSessionState({ diagnosis: diag.diagnosis });
     } catch (err) {
-      setDiagnosis('Diagnosis could not be completed.');
+      const msg = err.code === 'AI_PROVIDER_TEMPORARILY_UNAVAILABLE' || err.statusCode === 503
+        ? 'AI service is temporarily busy. Please try again in a few moments.'
+        : 'Diagnosis could not be completed.';
+      setDiagnosis(msg);
     } finally {
       setIsDiagnosing(false);
     }

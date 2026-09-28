@@ -211,7 +211,7 @@ const analysisSchema = new mongoose.Schema(
     },
     model: {
       type: String,
-      default: 'gemini-3.6-flash',
+      default: 'gemini-2.5-flash',
     },
     filesAnalyzed: {
       type: Number,

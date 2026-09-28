@@ -58,7 +58,7 @@ const geminiClient = axios.create({
 });
 
 // ---------------------------------------------------------------------------
-// Helpers: Error sanitization & Transient Error Detection
+// Helpers: Error sanitization & Error Classification
 // ---------------------------------------------------------------------------
 
 const sanitizeErrorMessage = (text) => {
@@ -66,6 +66,99 @@ const sanitizeErrorMessage = (text) => {
   return text
     .replace(/key=[a-zA-Z0-9_\-]+/gi, 'key=[REDACTED]')
     .replace(/AIza[a-zA-Z0-9_\-]{35}/g, '[REDACTED_API_KEY]');
+};
+
+const isQuotaExceededError = (error) => {
+  if (!error) return false;
+  const status = error.response?.status;
+  const data = error.response?.data;
+  const errorStatus = (data?.error?.status || '').toUpperCase();
+  const rawMsg = (
+    (typeof data?.error === 'string' ? data.error : data?.error?.message) ||
+    data?.message ||
+    error.message ||
+    ''
+  ).toLowerCase();
+
+  return (
+    status === 429 ||
+    errorStatus === 'RESOURCE_EXHAUSTED' ||
+    rawMsg.includes('resource_exhausted') ||
+    rawMsg.includes('resource has been exhausted') ||
+    rawMsg.includes('quota') ||
+    rawMsg.includes('rate limit') ||
+    rawMsg.includes('free-tier')
+  );
+};
+
+const isModelUnavailableError = (error) => {
+  if (!error) return false;
+  const status = error.response?.status;
+  const data = error.response?.data;
+  const rawMsg = (
+    (typeof data?.error === 'string' ? data.error : data?.error?.message) ||
+    data?.message ||
+    error.message ||
+    ''
+  ).toLowerCase();
+
+  return (
+    status === 404 ||
+    rawMsg.includes('not found') ||
+    rawMsg.includes('no longer available') ||
+    rawMsg.includes('is not supported') ||
+    rawMsg.includes('deprecated') ||
+    rawMsg.includes('not recognized')
+  );
+};
+
+const isAuthError = (error) => {
+  if (!error) return false;
+  const status = error.response?.status;
+  const data = error.response?.data;
+  const rawMsg = (
+    (typeof data?.error === 'string' ? data.error : data?.error?.message) ||
+    data?.message ||
+    error.message ||
+    ''
+  ).toLowerCase();
+
+  if (status === 401 || status === 403) return true;
+  if (
+    status === 400 &&
+    (rawMsg.includes('api_key_invalid') ||
+      rawMsg.includes('api key not valid') ||
+      rawMsg.includes('invalid api key') ||
+      rawMsg.includes('key not valid'))
+  ) {
+    return true;
+  }
+  return false;
+};
+
+const isServiceUnavailableError = (error) => {
+  if (!error) return false;
+  const status = error.response?.status;
+  const data = error.response?.data;
+  const errorStatus = (data?.error?.status || '').toUpperCase();
+  const rawMsg = (
+    (typeof data?.error === 'string' ? data.error : data?.error?.message) ||
+    data?.message ||
+    error.message ||
+    ''
+  ).toLowerCase();
+
+  return (
+    status === 503 ||
+    errorStatus === 'UNAVAILABLE' ||
+    rawMsg.includes('high demand') ||
+    rawMsg.includes('spikes in demand') ||
+    rawMsg.includes('service unavailable') ||
+    rawMsg.includes('temporarily unavailable') ||
+    rawMsg.includes('overloaded') ||
+    rawMsg.includes('server is busy') ||
+    rawMsg.includes('capacity')
+  );
 };
 
 const isTransientGeminiError = (error) => {
@@ -80,6 +173,10 @@ const isTransientGeminiError = (error) => {
     return false;
   }
 
+  if (isAuthError(error) || isModelUnavailableError(error)) {
+    return false;
+  }
+
   const status = error.response.status;
   const data = error.response.data;
   const rawMsg = (
@@ -89,34 +186,6 @@ const isTransientGeminiError = (error) => {
     ''
   ).toLowerCase();
   const errorStatus = (data?.error?.status || '').toUpperCase();
-
-  // Authentication & permission errors are PERMANENT
-  if (status === 401 || status === 403) {
-    return false;
-  }
-
-  // 400 Bad Request: Usually permanent (invalid API key, bad schema)
-  if (status === 400) {
-    if (
-      rawMsg.includes('api_key_invalid') ||
-      rawMsg.includes('api key not valid') ||
-      rawMsg.includes('invalid api key') ||
-      rawMsg.includes('key not valid') ||
-      errorStatus === 'INVALID_ARGUMENT'
-    ) {
-      // If it mentions high demand or overloaded despite 400, treat as transient
-      if (rawMsg.includes('high demand') || rawMsg.includes('overloaded')) {
-        return true;
-      }
-      return false;
-    }
-    return rawMsg.includes('high demand') || rawMsg.includes('overloaded');
-  }
-
-  // 404: Not found (invalid model or endpoint) is permanent
-  if (status === 404) {
-    return false;
-  }
 
   // 429: Rate limit or Resource exhausted
   if (status === 429 || errorStatus === 'RESOURCE_EXHAUSTED') {
@@ -133,56 +202,125 @@ const isTransientGeminiError = (error) => {
     return true;
   }
 
-  // Common transient text phrases returned by Gemini API
-  const transientPhrases = [
-    'high demand',
-    'spikes in demand',
-    'resource_exhausted',
-    'rate limit',
-    'overloaded',
-    'try again later',
-    'temporarily unavailable',
-    'service unavailable',
-    'server is busy',
-    'capacity',
-  ];
-
-  return transientPhrases.some((phrase) => rawMsg.includes(phrase));
+  return isServiceUnavailableError(error);
 };
 
-const toApiError = (error, fallbackMessage) => {
+const toApiError = (error, fallbackMessage, model) => {
   if (error instanceof ApiError) return error;
 
-  if (error.response) {
+  if (error?.response) {
     const { status, data } = error.response;
     const rawMsg = data?.error?.message || data?.message || '';
     const cleanMsg = sanitizeErrorMessage(rawMsg);
+    const errorStatus = (data?.error?.status || '').toUpperCase();
 
-    // Invalid API key
-    if (
-      status === 400 &&
-      (cleanMsg.toLowerCase().includes('api_key_invalid') ||
-        cleanMsg.toLowerCase().includes('api key not valid') ||
-        cleanMsg.toLowerCase().includes('invalid api key'))
-    ) {
-      return new ApiError(400, 'Gemini API key is invalid. Please check GEMINI_API_KEY in your server configuration.');
-    }
-    if (status === 401 || status === 403) {
-      return new ApiError(status, 'Gemini API authentication failed. Please verify your GEMINI_API_KEY.');
-    }
-
-    if (isTransientGeminiError(error)) {
-      return new ApiError(503, 'AI analysis is temporarily unavailable. Please try again in a few moments.');
+    // 1. Quota exceeded (429) -> AI_QUOTA_EXCEEDED
+    if (status === 429 || errorStatus === 'RESOURCE_EXHAUSTED' || isQuotaExceededError(error)) {
+      return new ApiError(
+        429,
+        'AI quota is currently exhausted. Please try again later or configure another available Gemini model/API project.',
+        undefined,
+        'AI_QUOTA_EXCEEDED',
+        model
+      );
     }
 
-    return new ApiError(status >= 400 && status < 600 ? status : 502, cleanMsg || fallbackMessage);
+    // 2. 503 Service Unavailable / High demand / Capacity -> AI_PROVIDER_TEMPORARILY_UNAVAILABLE
+    if (status === 503 || errorStatus === 'UNAVAILABLE' || isServiceUnavailableError(error)) {
+      // eslint-disable-next-line no-console
+      console.warn('[gemini] Returning AI_PROVIDER_TEMPORARILY_UNAVAILABLE');
+      return new ApiError(
+        503,
+        'AI service is temporarily busy. Please try again in a few moments.',
+        undefined,
+        'AI_PROVIDER_TEMPORARILY_UNAVAILABLE',
+        model
+      );
+    }
+
+    // 3. Auth error (401 / 403 / invalid api key) -> AI_AUTH_ERROR
+    if (isAuthError(error)) {
+      const authMsg =
+        status === 400
+          ? 'Gemini API key is invalid. Please check GEMINI_API_KEY in your server configuration.'
+          : 'Gemini API authentication failed. Please verify your GEMINI_API_KEY.';
+      return new ApiError(status === 400 ? 400 : 401, authMsg, undefined, 'AI_AUTH_ERROR', model);
+    }
+
+    // 4. Model unavailable / retired (404) -> AI_MODEL_UNAVAILABLE
+    if (status === 404 || isModelUnavailableError(error)) {
+      return new ApiError(
+        404,
+        cleanMsg || `The requested AI model "${model || 'unknown'}" is unavailable or deprecated.`,
+        undefined,
+        'AI_MODEL_UNAVAILABLE',
+        model
+      );
+    }
+
+    // 5. Bad request (400) -> AI_BAD_REQUEST
+    if (status === 400) {
+      return new ApiError(
+        400,
+        cleanMsg || fallbackMessage || 'Invalid request to Gemini API.',
+        undefined,
+        'AI_BAD_REQUEST',
+        model
+      );
+    }
+
+    // 6. 502 / 504 / 500 -> AI_PROVIDER_TEMPORARILY_UNAVAILABLE
+    if (status === 502 || status === 504 || status === 500) {
+      // eslint-disable-next-line no-console
+      console.warn('[gemini] Returning AI_PROVIDER_TEMPORARILY_UNAVAILABLE');
+      return new ApiError(
+        503,
+        'AI service is temporarily busy. Please try again in a few moments.',
+        undefined,
+        'AI_PROVIDER_TEMPORARILY_UNAVAILABLE',
+        model
+      );
+    }
+
+    return new ApiError(
+      status >= 400 && status < 600 ? status : 502,
+      cleanMsg || fallbackMessage,
+      undefined,
+      'AI_PROVIDER_ERROR',
+      model
+    );
   }
 
-  if (isTransientGeminiError(error)) {
-    return new ApiError(503, 'AI analysis is temporarily unavailable. Please try again in a few moments.');
+  // Network / timeout / transient without HTTP response
+  if (isQuotaExceededError(error)) {
+    return new ApiError(
+      429,
+      'AI quota is currently exhausted. Please try again later or configure another available Gemini model/API project.',
+      undefined,
+      'AI_QUOTA_EXCEEDED',
+      model
+    );
   }
 
-  return new ApiError(502, sanitizeErrorMessage(error.message) || fallbackMessage);
+  if (isServiceUnavailableError(error) || isTransientGeminiError(error)) {
+    // eslint-disable-next-line no-console
+    console.warn('[gemini] Returning AI_PROVIDER_TEMPORARILY_UNAVAILABLE');
+    return new ApiError(
+      503,
+      'AI service is temporarily busy. Please try again in a few moments.',
+      undefined,
+      'AI_PROVIDER_TEMPORARILY_UNAVAILABLE',
+      model
+    );
+  }
+
+  return new ApiError(
+    502,
+    sanitizeErrorMessage(error?.message) || fallbackMessage,
+    undefined,
+    'AI_PROVIDER_ERROR',
+    model
+  );
 };
 
 // ---------------------------------------------------------------------------
@@ -190,17 +328,17 @@ const toApiError = (error, fallbackMessage) => {
 // ---------------------------------------------------------------------------
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const RETRY_DELAYS_MS = [1000, 2000, 4000]; // 1s -> 2s -> 4s
+const RETRY_DELAYS_MS = [1000]; // Max 1 retry with fast 1s delay for quick responsiveness
 
 /**
- * Call Gemini with automatic retry on transient errors (429, 503, high demand),
- * exponential backoff, and model fallback if primary model fails.
+ * Call Gemini with automatic failover on 429 quota exhaustion and 404 model retirement,
+ * capped 1-retry handling for 503 high demand, and structured error responses.
  */
 const callGeminiWithRetryAndFallback = async (buildPayload, options = {}) => {
-  const primaryModel = options.primaryModel || env.geminiModel || 'gemini-2.5-flash';
-  const fallbackModel = options.fallbackModel || env.geminiFallbackModel || 'gemini-2.0-flash';
+  const primaryModel = options.primaryModel || env.geminiPrimaryModel || env.geminiModel || 'gemini-2.5-flash';
+  const fallbackModel = options.fallbackModel || env.geminiFallbackModel || 'gemini-3.8-flash';
   const retryDelays = options.retryDelays || RETRY_DELAYS_MS;
-  const maxRetries = retryDelays.length;
+  const maxRetries = Math.min(retryDelays.length, 1); // Maximum 1 retry for 503/high-demand
   const onStatusUpdate = options.onStatusUpdate || (() => {});
 
   const modelsToTry = [primaryModel];
@@ -208,7 +346,11 @@ const callGeminiWithRetryAndFallback = async (buildPayload, options = {}) => {
     modelsToTry.push(fallbackModel);
   }
 
+  // eslint-disable-next-line no-console
+  console.log(`[gemini] Primary model: ${primaryModel}`);
+
   let lastError;
+  let lastModel = primaryModel;
 
   for (let mIdx = 0; mIdx < modelsToTry.length; mIdx++) {
     const currentModel = modelsToTry[mIdx];
@@ -216,9 +358,7 @@ const callGeminiWithRetryAndFallback = async (buildPayload, options = {}) => {
 
     if (isFallback) {
       // eslint-disable-next-line no-console
-      console.warn(
-        `[gemini] Primary model "${primaryModel}" unavailable. Switching to fallback model "${currentModel}"...`
-      );
+      console.log(`[gemini] Falling back to: ${currentModel}`);
       onStatusUpdate('Primary AI model unavailable. Trying fallback model...');
     }
 
@@ -228,13 +368,22 @@ const callGeminiWithRetryAndFallback = async (buildPayload, options = {}) => {
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         const response = await geminiClient.post(path, payload);
+        if (isFallback) {
+          // eslint-disable-next-line no-console
+          console.log(`[gemini] Fallback succeeded: ${currentModel}`);
+        }
         return { response, modelUsed: currentModel };
       } catch (error) {
         lastError = error;
+        lastModel = currentModel;
         const status = error.response?.status;
         const errDetails = sanitizeErrorMessage(
           error.response?.data?.error?.message || error.response?.data?.message || error.message
         );
+
+        // Required defensive logging
+        // eslint-disable-next-line no-console
+        console.warn(`[gemini] Request failed: ${status || error.code || 'network'}`);
 
         // Technical logging on backend without exposing secrets
         // eslint-disable-next-line no-console
@@ -242,38 +391,82 @@ const callGeminiWithRetryAndFallback = async (buildPayload, options = {}) => {
           `[gemini] Attempt ${attempt + 1}/${maxRetries + 1} for model "${currentModel}" failed (${status || error.code || 'network'}): ${errDetails}`
         );
 
-        const transient = isTransientGeminiError(error);
-        if (!transient) {
-          // Permanent error (e.g. invalid API key) - abort immediately!
+        // 1. Permanent Auth error: Abort immediately without retrying or fallback
+        if (isAuthError(error)) {
           // eslint-disable-next-line no-console
-          console.error(`[gemini] Permanent error encountered. Aborting retries and fallback.`);
-          throw toApiError(error, 'Gemini API request failed.');
+          console.error('[gemini] Permanent authentication error encountered. Aborting retries and fallback.');
+          throw toApiError(error, 'Gemini API authentication failed.', currentModel);
         }
 
-        // Retry with exponential backoff if attempts remaining on this model
-        if (attempt < maxRetries) {
-          const retryAfterHeader = error.response?.headers?.['retry-after'];
-          const retryAfterMs = retryAfterHeader ? Number(retryAfterHeader) * 1000 : NaN;
-          const delay = Number.isFinite(retryAfterMs)
-            ? Math.min(Math.max(retryAfterMs, 1000), 8000)
-            : retryDelays[attempt] || 1000;
+        // 2. Quota exceeded (429 / RESOURCE_EXHAUSTED):
+        // Immediately try fallback model without retrying exhausted model!
+        if (isQuotaExceededError(error)) {
+          if (!isFallback) {
+            // eslint-disable-next-line no-console
+            console.log('[gemini] Primary quota exhausted, failing over');
+          } else {
+            // eslint-disable-next-line no-console
+            console.warn(`[gemini] Quota exhausted on fallback model "${currentModel}".`);
+          }
+          break; // Break retry loop immediately to try next model in modelsToTry
+        }
 
+        // 3. Model unavailable / retired (404):
+        // Immediately try fallback model without retrying!
+        if (isModelUnavailableError(error)) {
+          // eslint-disable-next-line no-console
+          console.warn(`[gemini] Model "${currentModel}" unavailable (404). Immediate failover.`);
+          break; // Break retry loop immediately to try next model
+        }
+
+        // 4. 503 / High demand / Capacity error:
+        if (isServiceUnavailableError(error)) {
+          if (isFallback) {
+            // eslint-disable-next-line no-console
+            console.warn('[gemini] Fallback temporarily unavailable');
+          }
+
+          if (attempt < maxRetries) {
+            const delay = Math.min(retryDelays[attempt] || 1000, 1500); // Cap retry delay to 1.5s max
+            // eslint-disable-next-line no-console
+            console.warn(
+              `[gemini] 503 high demand on "${currentModel}". Retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})...`
+            );
+            onStatusUpdate('AI service is temporarily busy. Retrying...');
+            await sleep(delay);
+            continue;
+          } else {
+            // Exhausted max 1 retry on this model
+            break;
+          }
+        }
+
+        // 5. Other permanent error (e.g. 400 invalid schema):
+        const transient = isTransientGeminiError(error);
+        if (!transient) {
+          // eslint-disable-next-line no-console
+          console.error('[gemini] Permanent error encountered. Aborting retries and fallback.');
+          throw toApiError(error, 'Gemini API request failed.', currentModel);
+        }
+
+        // 6. Other transient error (network reset / timeout):
+        if (attempt < maxRetries) {
+          const delay = Math.min(retryDelays[attempt] || 1000, 1500);
           // eslint-disable-next-line no-console
           console.warn(
-            `[gemini] Transient error on "${currentModel}". Retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})...`
+            `[gemini] Transient network error on "${currentModel}". Retrying in ${delay}ms...`
           );
-          onStatusUpdate('AI model is temporarily busy. Retrying...');
+          onStatusUpdate('AI service is temporarily busy. Retrying...');
           await sleep(delay);
         } else {
-          // eslint-disable-next-line no-console
-          console.warn(`[gemini] Exhausted ${maxRetries} retries for model "${currentModel}".`);
+          break;
         }
       }
     }
   }
 
   // All models and retries exhausted
-  throw toApiError(lastError, 'AI analysis is temporarily unavailable. Please try again in a few moments.');
+  throw toApiError(lastError, 'AI service is temporarily busy. Please try again in a few moments.', lastModel || primaryModel);
 };
 
 const buildPrompt = (repoLabel, files) => {
@@ -800,6 +993,11 @@ module.exports = {
   generatePullRequestDetails,
   callGeminiWithRetryAndFallback,
   isTransientGeminiError,
+  isQuotaExceededError,
+  isModelUnavailableError,
+  isServiceUnavailableError,
+  isAuthError,
+  toApiError,
   sanitizeErrorMessage,
   _geminiClient: geminiClient,
   SEVERITIES,

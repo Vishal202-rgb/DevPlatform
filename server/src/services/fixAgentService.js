@@ -161,7 +161,7 @@ CRITICAL RULES:
 - Make ONLY the minimal change required to safely resolve the issue without introducing breaking changes.
 - Never include markdown code blocks or conversational commentary in your response — output ONLY the raw file content.`;
 
-    const { response } = await geminiService.callGeminiWithRetryAndFallback(
+    const { response, modelUsed } = await geminiService.callGeminiWithRetryAndFallback(
       () => ({
         systemInstruction: {
           role: 'system',
@@ -225,6 +225,7 @@ CRITICAL RULES:
       risks: impactContext?.riskLevel ? `Downstream impact risk is evaluated as ${impactContext.riskLevel}.` : 'Low risk.',
       testsRequired: [`Regression test for ${filePath}`, `Unit test for modified branch logic`],
       securityCheck,
+      model: modelUsed,
       originalFileSha: fileSha,
       originalContentHash: originalHash,
       proposedContentHash: proposedHash,
