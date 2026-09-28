@@ -1,7 +1,7 @@
-const { exec } = require('child_process');
 const ApiError = require('../utils/ApiError');
 const geminiService = require('./geminiService');
 const githubService = require('./githubService');
+const targetTestRunnerService = require('./targetTestRunnerService');
 const Repository = require('../models/Repository');
 const Analysis = require('../models/Analysis');
 const AuditLog = require('../models/AuditLog');
@@ -18,6 +18,11 @@ const ALLOWED_TEST_COMMANDS = new Set([
   'python -m unittest',
   'mvn test',
   'gradle test',
+  'c-target-runner',
+  'cpp-target-runner',
+  'gcc',
+  'g++',
+  'clang',
 ]);
 
 /**
@@ -26,6 +31,27 @@ const ALLOWED_TEST_COMMANDS = new Set([
 const detectTestFramework = (packageJsonContent = '', filePaths = []) => {
   const pkgLower = packageJsonContent.toLowerCase();
 
+  // 1. Language-specific test framework detection
+  if (filePaths.some((p) => p.endsWith('.c') || p.endsWith('.h'))) {
+    return { name: 'C Target Runner', command: 'c-target-runner', extension: '.test.c' };
+  }
+  if (filePaths.some((p) => p.endsWith('.cpp') || p.endsWith('.cc') || p.endsWith('.cxx') || p.endsWith('.hpp'))) {
+    return { name: 'C++ Target Runner', command: 'cpp-target-runner', extension: '.test.cpp' };
+  }
+  if (filePaths.some((p) => p.endsWith('.py'))) {
+    return { name: 'Pytest', command: 'pytest', extension: '_test.py' };
+  }
+  if (filePaths.some((p) => p.endsWith('.java'))) {
+    return { name: 'JUnit', command: 'mvn test', extension: 'Test.java' };
+  }
+  if (filePaths.some((p) => p.endsWith('.go'))) {
+    return { name: 'Go Test', command: 'go test ./...', extension: '_test.go' };
+  }
+  if (filePaths.some((p) => p.endsWith('.rs'))) {
+    return { name: 'Cargo Test', command: 'cargo test', extension: '_test.rs' };
+  }
+
+  // 2. JavaScript / Node.js framework detection
   if (pkgLower.includes('"vitest"')) {
     return { name: 'Vitest', command: 'npx vitest run', extension: '.test.js' };
   }
@@ -34,14 +60,6 @@ const detectTestFramework = (packageJsonContent = '', filePaths = []) => {
   }
   if (pkgLower.includes('"mocha"')) {
     return { name: 'Mocha', command: 'npm test', extension: '.spec.js' };
-  }
-
-  // Check file extensions
-  if (filePaths.some((p) => p.endsWith('.py'))) {
-    return { name: 'Pytest', command: 'pytest', extension: '_test.py' };
-  }
-  if (filePaths.some((p) => p.endsWith('.java'))) {
-    return { name: 'JUnit', command: 'mvn test', extension: 'Test.java' };
   }
 
   return { name: 'Jest / Node Test', command: 'npm test', extension: '.test.js' };
@@ -94,8 +112,27 @@ class TestRunnerService {
     }
 
     const framework = detectTestFramework(packageJson, [filePath]);
+    const isC = framework.name.includes('C');
 
     // 2. Generate 4-scenario test content using Gemini
+    let rulesText = `- Use standard assertions for ${framework.name}.
+- Include all necessary module imports.`;
+
+    if (isC) {
+      rulesText = `- Write executable test scenarios for C programs using:
+  const { stdout, stderr, code } = await runCProgram("input\\n");
+  expect(code).toBe(0);
+  expect(stdout).toContain("..."); // or expect(normalizeProgramOutput(stdout)).toContain("...");
+- Note: Interactive CLI programs in C print prompts (e.g., "Enter two numbers: ") before output.
+- Available sandbox helpers: runCProgram(input), normalizeProgramOutput(stdout), extractResultLine(stdout), expect().
+- Match meaningful phrases from printf statements in Target Code (e.g. if code prints "Both numbers are equal\\n", assert on "Both numbers are equal" or "numbers are equal" without accidental trailing spaces).
+- Cover all 4 mandatory scenarios in descriptive describe() and it() blocks:
+  1. REGRESSION TEST: Directly verifies the bug/vulnerability will not reoccur.
+  2. HAPPY PATH TEST: Verifies standard, expected inputs and typical operational flow.
+  3. EDGE CASE TEST: Tests boundary conditions, equal values, zeros, and unusual formats.
+  4. ERROR HANDLING TEST: Validates invalid inputs, negative numbers, or unexpected values.`;
+    }
+
     const testPrompt = `Repository: ${repo.fullName}
 Target File: ${filePath}
 Framework: ${framework.name}
@@ -112,8 +149,7 @@ Generate a production-ready test suite covering these 4 mandatory scenarios:
 4. ERROR HANDLING TEST: Validates invalid inputs, thrown errors, and rejection handling.
 
 RULES:
-- Use standard assertions for ${framework.name}.
-- Include all necessary module imports.
+${rulesText}
 - Output ONLY the raw executable test file content without markdown code blocks or explanations.`;
 
     const { response } = await geminiService.callGeminiWithRetryAndFallback(
@@ -172,82 +208,55 @@ RULES:
   }
 
   /**
-   * Execute allowlisted test runner in a secure, controlled local execution sandbox.
+   * Execute allowlisted test runner in a secure, controlled target execution sandbox.
    */
   async executeControlledTests(userId, repositoryId, options = {}) {
-    const rawCommand = (options.command || 'npm test').trim();
+    const rawCommand = (options.command || '').trim();
 
-    // 1. Strict Allowlist Security Check
-    if (!ALLOWED_TEST_COMMANDS.has(rawCommand)) {
+    // 1. Strict Allowlist Security Check when explicit shell command is supplied
+    if (rawCommand && !ALLOWED_TEST_COMMANDS.has(rawCommand)) {
       throw new ApiError(
         400,
         `Command "${rawCommand}" is not in the approved test runner allowlist. Allowed commands: ${Array.from(ALLOWED_TEST_COMMANDS).join(', ')}`
       );
     }
 
-    const startTime = Date.now();
+    // Prevent malicious shell characters in any supplied parameters
+    const suspiciousChars = /[;&|`$><\r\n]/;
+    if (rawCommand && suspiciousChars.test(rawCommand)) {
+      throw new ApiError(400, 'Unsafe command characters detected in test command.');
+    }
 
-    return new Promise((resolve) => {
-      exec(
-        rawCommand,
-        {
-          timeout: 45000,
-          maxBuffer: 1024 * 1024 * 2, // 2MB buffer
-          env: { ...process.env, CI: 'true', NODE_ENV: 'test' },
-        },
-        async (error, stdout, stderr) => {
-          const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-          const exitCode = error ? error.code || 1 : 0;
-          const isPass = exitCode === 0;
+    // 2. Delegate to the Language-Aware Target Test Runner
+    const result = await targetTestRunnerService.executeTargetTest(userId, repositoryId, options);
 
-          // Parse pass / fail counts if present in stdout/stderr
-          const outputText = `${stdout}\n${stderr}`;
-          let passed = 0;
-          let failed = 0;
-          let skipped = 0;
+    // 3. Persist audit log with target execution metadata
+    if (repositoryId && userId) {
+      try {
+        await AuditLog.create({
+          repository: repositoryId,
+          user: userId,
+          action: 'tests_executed',
+          status: result.status === 'PASS' ? 'success' : 'warning',
+          targetFile: result.targetFile || result.testFile || 'workspace',
+          details: {
+            command: result.command,
+            runner: result.runner,
+            language: result.language,
+            passed: result.passed,
+            failed: result.failed,
+            total: result.total,
+            exitCode: result.exitCode,
+            duration: result.duration,
+          },
+          message: `Executed ${result.runner} for ${result.targetFile || 'repository'} (${result.status}: ${result.passed}/${result.total} passed)`,
+        });
+      } catch (e) {
+        // Ignore audit failure
+      }
+    }
 
-          const passMatch = outputText.match(/(\d+)\s+(?:passed|passing|ok)/i);
-          if (passMatch) passed = parseInt(passMatch[1], 10);
-
-          const failMatch = outputText.match(/(\d+)\s+(?:failed|failing|error)/i);
-          if (failMatch) failed = parseInt(failMatch[1], 10);
-
-          const skipMatch = outputText.match(/(\d+)\s+(?:skipped|todo)/i);
-          if (skipMatch) skipped = parseInt(skipMatch[1], 10);
-
-          if (isPass && passed === 0) passed = 1;
-          if (!isPass && failed === 0) failed = 1;
-
-          const result = {
-            status: isPass ? 'PASS' : 'FAIL',
-            command: rawCommand,
-            exitCode,
-            stdout: stdout.slice(0, 10000),
-            stderr: stderr.slice(0, 5000),
-            duration: `${duration}s`,
-            passed,
-            failed,
-            skipped,
-            executedAt: new Date(),
-          };
-
-          try {
-            await AuditLog.create({
-              repository: repositoryId,
-              user: userId,
-              action: 'tests_executed',
-              status: isPass ? 'success' : 'warning',
-              details: { command: rawCommand, passed, failed, duration: `${duration}s` },
-              message: `Executed test command "${rawCommand}" (${result.status}: ${passed} passed, ${failed} failed)`,
-            });
-          } catch (e) {
-            // Ignore audit failure
-          }
-
-          resolve(result);
-        }
-      );
-    });
+    return result;
   }
 
   /**

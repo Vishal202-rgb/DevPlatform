@@ -8,6 +8,7 @@ const {
   applyTests,
   runTests,
   verifyFix,
+  remediateIssue,
   diagnoseFailure,
   getAuditTrail,
   getPrReadiness,
@@ -23,6 +24,7 @@ router.post('/:repositoryId/generate-tests', protect, generateTests);
 router.post('/:repositoryId/apply-tests', protect, applyTests);
 router.post('/:repositoryId/run-tests', protect, runTests);
 router.post('/:repositoryId/verify-fix', protect, verifyFix);
+router.post('/:repositoryId/remediate', protect, remediateIssue);
 router.post('/:repositoryId/diagnose-failure', protect, diagnoseFailure);
 router.get('/:repositoryId/audit-trail', protect, getAuditTrail);
 router.post('/:repositoryId/pr-readiness', protect, getPrReadiness);

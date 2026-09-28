@@ -782,6 +782,24 @@ const generateTests = async (filePath, originalContent, issue, onStatusUpdate) =
     throw new ApiError(500, 'Gemini is not configured on the server (missing GEMINI_API_KEY).');
   }
 
+  const isC = (filePath || '').endsWith('.c') || (filePath || '').endsWith('.h') || (filePath || '').endsWith('.cpp');
+  const systemInstructionText = isC
+    ? `You are a precise code-testing assistant for C/C++ programs in DevMind.
+Generate an executable JavaScript test suite that tests the compiled C program using runCProgram(input) and makes assertions with expect().
+Rules:
+- Write executable test scenarios using: const { stdout, stderr, code } = await runCProgram("input\\n");
+- Assert expect(code).toBe(0);
+- Account for interactive CLI prompts (e.g., "Enter two numbers: ") printed by the C program.
+- Match meaningful phrases from printf statements in the C code (e.g. if code prints "Both numbers are equal\\n", assert on "Both numbers are equal" or "numbers are equal" without accidental trailing spaces).
+- Available sandbox helpers: runCProgram(input), normalizeProgramOutput(stdout), extractResultLine(stdout), expect().
+- Cover 4 mandatory scenarios in describe() and it() blocks:
+  1. Regression Test
+  2. Happy Path Test
+  3. Edge Case Test
+  4. Error Handling Test
+- Output ONLY the raw executable test file content. No markdown code fences, no explanations.`
+    : TEST_SYSTEM_INSTRUCTION;
+
   const prompt = `File: ${filePath}
 Issue: [${issue.severity}] [${issue.category}] ${issue.description}
 
@@ -790,10 +808,10 @@ ${originalContent}`;
 
   const { response } = await callGeminiWithRetryAndFallback(
     (_model) => ({
-      systemInstruction: { role: 'system', parts: [{ text: TEST_SYSTEM_INSTRUCTION }] },
+      systemInstruction: { role: 'system', parts: [{ text: systemInstructionText }] },
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
-        temperature: 0.2,
+        temperature: 0.1,
         maxOutputTokens: 16384,
       },
     }),

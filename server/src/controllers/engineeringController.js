@@ -188,6 +188,24 @@ const applyTests = asyncHandler(async (req, res) => {
   });
 });
 
+/**
+ * Autonomous AI Remediation Workflow:
+ * Issue -> Analyze Code + Failures -> Generate Fix -> Validate against Target Tests -> Refine if Failed -> Verify -> Apply
+ * POST /api/engineering/:repositoryId/remediate
+ */
+const remediateIssue = asyncHandler(async (req, res) => {
+  const { repositoryId } = req.params;
+  const result = await fixAgentService.remediateAndVerifyIssue(req.user.id, repositoryId, req.body);
+
+  res.status(200).json({
+    success: result.success,
+    message: result.success
+      ? `Remediation successful: fix verified and ${result.resolved}`
+      : `Remediation incomplete: ${result.error || 'target tests failed'}`,
+    data: result,
+  });
+});
+
 module.exports = {
   generateFixProposal,
   validateFix,
@@ -196,6 +214,7 @@ module.exports = {
   applyTests,
   runTests,
   verifyFix,
+  remediateIssue,
   diagnoseFailure,
   getAuditTrail,
   getPrReadiness,

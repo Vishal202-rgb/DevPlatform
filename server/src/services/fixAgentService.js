@@ -4,6 +4,8 @@ const geminiService = require('./geminiService');
 const retrievalService = require('./retrievalService');
 const impactService = require('./impactService');
 const githubService = require('./githubService');
+const targetTestRunnerService = require('./targetTestRunnerService');
+const verificationAgentService = require('./verificationAgentService');
 const Repository = require('../models/Repository');
 const Analysis = require('../models/Analysis');
 const AuditLog = require('../models/AuditLog');
@@ -90,7 +92,20 @@ class FixAgentService {
    * Generate an intelligent, targeted fix proposal for an issue with RAG and impact context.
    */
   async generateFixProposal(userId, repositoryId, issueData) {
-    const { issueId, analysisId, filePath, line, description, severity, recommendation } = issueData;
+    const {
+      issueId,
+      analysisId,
+      filePath,
+      line,
+      description,
+      severity,
+      recommendation,
+      category,
+      testCode,
+      testFailures,
+      testResults,
+      feedback,
+    } = issueData;
 
     if (!repositoryId || !filePath) {
       throw new ApiError(400, 'Repository ID and file path are required for fix generation');
@@ -137,10 +152,36 @@ class FixAgentService {
       topK: 3,
     });
 
-    // 4. Prompt Gemini with structured Fix Agent Instructions
+    // 4. Build Failure & Test Evidence Sections
+    let failureSection = '';
+    if (testFailures || (testResults && (testResults.status === 'FAIL' || testResults.exitCode !== 0))) {
+      const failOutput = testFailures || `${testResults?.stdout || ''}\n${testResults?.stderr || ''}`;
+      failureSection = `\n=== TARGET TEST FAILURES & EXECUTION EVIDENCE ===
+The previous code or partial fix failed the following target test scenarios:
+${failOutput.slice(0, 3000)}
+`;
+    }
+
+    let testSuiteSection = '';
+    if (testCode) {
+      testSuiteSection = `\n=== TARGET TEST SUITE SPECIFICATION ===
+The fix must pass ALL scenarios in this test suite without breaking any of them:
+${testCode.slice(0, 3000)}
+`;
+    }
+
+    let feedbackSection = '';
+    if (feedback) {
+      feedbackSection = `\n=== REFINEMENT FEEDBACK ===
+${feedback}
+`;
+    }
+
+// 5. Prompt Gemini with structured Fix Agent Instructions
     const fixPrompt = `Repository: ${repo.fullName}
 Target File: ${filePath} (line ${line || 'N/A'})
 Severity: ${severity || 'medium'}
+Category: ${category || 'bug'}
 Issue Description: ${description}
 Recommendation: ${recommendation || 'Fix the issue with minimal, clean changes.'}
 
@@ -154,11 +195,15 @@ ${formattedContext || '(Using current file content below)'}
 
 === CURRENT FILE CONTENT ===
 ${originalContent}
-
+${testSuiteSection}${failureSection}${feedbackSection}
 CRITICAL RULES:
 - Provide the COMPLETE, corrected file content.
-- Preserve all unrelated comments, imports, formatting, and functions exactly as they are.
-- Make ONLY the minimal change required to safely resolve the issue without introducing breaking changes.
+- Thoroughly analyze the original issue, current source code, test suite scenarios, and any failure output before creating the patch.
+- Address the ROOT CAUSE of the issue and ensure ALL test scenarios pass.
+- For runtime/error issues (such as boundary conditions, buffer limits, division by zero, invalid input, equal/negative numbers, or null pointers), explicitly and safely handle the failure conditions.
+- Preserve all existing valid behavior, unrelated comments, imports, formatting, and functions.
+- Do NOT fix just one single failing condition while breaking or ignoring other scenarios.
+- Make ONLY the minimal, production-safe change required to resolve the complete issue.
 - Never include markdown code blocks or conversational commentary in your response — output ONLY the raw file content.`;
 
     const { response, modelUsed } = await geminiService.callGeminiWithRetryAndFallback(
@@ -167,7 +212,7 @@ CRITICAL RULES:
           role: 'system',
           parts: [
             {
-              text: 'You are the AI FIX AGENT for DevMind. Generate precise, production-grade code patches with zero extraneous modifications.',
+              text: 'You are the AI FIX AGENT for DevMind. Generate precise, production-grade code patches with zero extraneous modifications that resolve the root cause across all test scenarios and edge cases.',
             },
           ],
         },
@@ -189,17 +234,17 @@ CRITICAL RULES:
       throw new ApiError(422, 'Unable to generate a reliable fix for this issue.');
     }
 
-    // 5. Run Security Gate Check
+    // 6. Run Security Gate Check
     const securityCheck = runSecurityGateCheck(proposedContent);
 
-    // 6. Generate Unified Diff
+    // 7. Generate Unified Diff
     const diff = generateUnifiedDiff(filePath, originalContent, proposedContent);
 
-    // 7. Compute Hash & Confidence
+    // 8. Compute Hash & Confidence
     const originalHash = crypto.createHash('sha256').update(originalContent).digest('hex');
     const proposedHash = crypto.createHash('sha256').update(proposedContent).digest('hex');
 
-    // 8. Log Audit Action
+    // 9. Log Audit Action
     await AuditLog.create({
       repository: repositoryId,
       user: userId,
@@ -354,6 +399,207 @@ CRITICAL RULES:
       compareUrl,
       targetFile: filePath,
       appliedAt: new Date(),
+    };
+  }
+
+  /**
+   * Validate a proposed code change directly against the target repository's test suite.
+   */
+  async validateProposedFix(userId, repositoryId, options = {}) {
+    const {
+      filePath,
+      proposedContent,
+      testCode,
+      testFilePath,
+      language,
+      owner,
+      repo,
+      branch,
+    } = options;
+
+    return await targetTestRunnerService.executeTargetTest(userId, repositoryId, {
+      owner,
+      repo,
+      branch,
+      targetFile: filePath,
+      targetContent: proposedContent,
+      testFilePath,
+      testCode,
+      language,
+    });
+  }
+
+  /**
+   * Autonomous AI Remediation Workflow:
+   * Issue -> Analyze Code + All Failures -> Generate Fix -> Validate against Target Tests -> Refine if Failed -> Re-run -> Verify -> Apply -> RESOLVED
+   */
+  async remediateAndVerifyIssue(userId, repositoryId, options = {}) {
+    const {
+      issueData = {},
+      testCode: providedTestCode,
+      testFilePath: providedTestFilePath,
+      language: providedLanguage,
+      maxRetries = 3,
+      autoApply = false,
+      commitMessage,
+      branchName,
+    } = options;
+
+    const { filePath } = issueData;
+    if (!repositoryId || !filePath) {
+      throw new ApiError(400, 'Repository ID and target file path are required for remediation');
+    }
+
+    let activeTestCode = providedTestCode;
+    let activeTestFilePath = providedTestFilePath;
+    let activeLanguage = providedLanguage;
+
+    // If test code wasn't explicitly provided, generate comprehensive 4-scenario suite to validate against
+    if (!activeTestCode) {
+      try {
+        const testRunnerService = require('./testRunnerService');
+        const generated = await testRunnerService.generateComprehensiveTests(userId, repositoryId, {
+          filePath,
+          issueDescription: issueData.description,
+          fixExplanation: issueData.recommendation,
+        });
+        if (generated && generated.testCode) {
+          activeTestCode = generated.testCode;
+          activeTestFilePath = generated.testFilePath;
+        }
+      } catch (err) {
+        // Continue with available context if automatic test generation encounters an issue
+      }
+    }
+
+    let cumulativeFailures = '';
+    let lastFixProposal = null;
+    let lastTestResult = null;
+    let lastVerificationResult = null;
+    const history = [];
+
+    // Iterative Fix-and-Validate Loop
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      // 1. Generate Fix Proposal taking into account the issue, source code, and any prior test failures
+      const currentIssuePayload = {
+        ...issueData,
+        testCode: activeTestCode,
+        testFailures: cumulativeFailures || issueData.testFailures,
+        feedback: cumulativeFailures
+          ? `Attempt ${attempt - 1} produced code that failed target tests. Review the target test failures below and ensure all scenarios and edge cases are completely handled.`
+          : undefined,
+      };
+
+      lastFixProposal = await this.generateFixProposal(userId, repositoryId, currentIssuePayload);
+
+      // 2. If testCode is available, execute target tests against the newly proposed fix
+      if (activeTestCode || activeTestFilePath) {
+        lastTestResult = await this.validateProposedFix(userId, repositoryId, {
+          filePath,
+          proposedContent: lastFixProposal.fullProposedContent,
+          testCode: activeTestCode,
+          testFilePath: activeTestFilePath,
+          language: activeLanguage,
+        });
+
+        const isPass = lastTestResult.status === 'PASS' && lastTestResult.exitCode === 0 && (lastTestResult.failed === 0 || !lastTestResult.failed);
+
+        history.push({
+          attempt,
+          isPass,
+          testResults: lastTestResult,
+          diff: lastFixProposal.diff,
+        });
+
+        if (isPass) {
+          // 3. Verify fix resolution using Verification Agent with evidence of passed tests
+          lastVerificationResult = await verificationAgentService.verifyFixResolution(userId, repositoryId, {
+            originalIssue: issueData,
+            originalCode: lastFixProposal.fullOriginalContent,
+            modifiedCode: lastFixProposal.fullProposedContent,
+            testCode: activeTestCode,
+            testResults: lastTestResult,
+            securityCheck: lastFixProposal.securityCheck,
+            targetFile: filePath,
+          });
+
+          // 4. Optionally commit the verified fix to the Git branch
+          let applyResult = null;
+          if (autoApply && lastVerificationResult.resolved === 'RESOLVED') {
+            applyResult = await this.applyApprovedFix(userId, repositoryId, {
+              issueId: issueData.issueId || issueData._id || issueData.id,
+              analysisId: issueData.analysisId || issueData.analysis,
+              filePath,
+              proposedContent: lastFixProposal.fullProposedContent,
+              originalFileSha: lastFixProposal.originalFileSha,
+              originalContentHash: lastFixProposal.originalContentHash,
+              commitMessage,
+              branchName,
+            });
+          }
+
+          return {
+            success: true,
+            resolved: lastVerificationResult.resolved,
+            verified: true,
+            attempts: attempt,
+            fixProposal: lastFixProposal,
+            testResults: lastTestResult,
+            testCode: activeTestCode,
+            verificationResult: lastVerificationResult,
+            appliedResult: applyResult,
+            diff: lastFixProposal.diff,
+            history,
+          };
+        } else {
+          // Collect failure output for the next refinement loop
+          const failedScenarios = (lastTestResult.tests || [])
+            .filter((t) => t.status === 'failed')
+            .map((t) => `${t.name}: ${t.error}`)
+            .join('\n');
+
+          cumulativeFailures = `Target Test Failures (Exit Code: ${lastTestResult.exitCode}):\n${failedScenarios || 'One or more test assertions failed'}\n\nSTDOUT:\n${lastTestResult.stdout || ''}\n\nSTDERR:\n${lastTestResult.stderr || ''}`;
+        }
+      } else {
+        // No test code supplied; return generated fix proposal without auto-marking resolved
+        return {
+          success: true,
+          resolved: 'UNVERIFIED',
+          verified: false,
+          attempts: 1,
+          fixProposal: lastFixProposal,
+          testResults: null,
+          testCode: null,
+          verificationResult: null,
+          diff: lastFixProposal.diff,
+          history,
+        };
+      }
+    }
+
+    // If maxRetries exhausted and tests still fail
+    lastVerificationResult = await verificationAgentService.verifyFixResolution(userId, repositoryId, {
+      originalIssue: issueData,
+      originalCode: lastFixProposal?.fullOriginalContent,
+      modifiedCode: lastFixProposal?.fullProposedContent,
+      testCode: activeTestCode,
+      testResults: lastTestResult,
+      securityCheck: lastFixProposal?.securityCheck,
+      targetFile: filePath,
+    });
+
+    return {
+      success: false,
+      resolved: 'NOT_RESOLVED',
+      verified: false,
+      attempts: maxRetries,
+      fixProposal: lastFixProposal,
+      testResults: lastTestResult,
+      testCode: activeTestCode,
+      verificationResult: lastVerificationResult,
+      error: `Fix did not pass all target tests after ${maxRetries} refinement attempts. Fix was NOT marked resolved.`,
+      diff: lastFixProposal?.diff,
+      history,
     };
   }
 }

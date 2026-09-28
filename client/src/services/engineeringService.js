@@ -52,6 +52,11 @@ export const fetchPrReadiness = async (repositoryId, payload) => {
   return data.data;
 };
 
+export const remediateIssue = async (repositoryId, payload) => {
+  const { data } = await api.post(`/engineering/${repositoryId}/remediate`, payload);
+  return data.data;
+};
+
 export const revertSessionChanges = async (repositoryId, payload) => {
   const { data } = await api.post(`/engineering/${repositoryId}/revert`, payload);
   return data.data;

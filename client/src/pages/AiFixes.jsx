@@ -9,6 +9,7 @@ import {
   applyApprovedFix,
   revertSessionChanges,
   fetchAuditTrail,
+  remediateIssue,
 } from '../services/engineeringService';
 import { calculateImpact } from '../services/impactService';
 
@@ -21,6 +22,10 @@ export default function AiFixes() {
   const [impactContext, setImpactContext] = useState(null);
   const [fixProposal, setFixProposal] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isRemediating, setIsRemediating] = useState(false);
+  const [remediationStep, setRemediationStep] = useState('');
+  const [testResults, setTestResults] = useState(null);
+  const [verificationResult, setVerificationResult] = useState(null);
   const [isApplying, setIsApplying] = useState(false);
   const [applyResult, setApplyResult] = useState(null);
   const [auditLogs, setAuditLogs] = useState([]);
@@ -114,6 +119,9 @@ export default function AiFixes() {
     setSelectedIssue(issue);
     setFixProposal(null);
     setApplyResult(null);
+    setTestResults(null);
+    setVerificationResult(null);
+    setRemediationStep('');
     setError('');
     setSuccessMsg('');
 
@@ -366,6 +374,83 @@ export default function AiFixes() {
     }
   };
 
+  const handleRemediateIssue = async () => {
+    const activeRepo = findRepo(selectedRepoId);
+    const targetRepoId = activeRepo?.repositoryId || activeRepo?._id || selectedRepoId;
+
+    if (!targetRepoId || !selectedIssue) {
+      setError('Please select a repository and an issue.');
+      return;
+    }
+
+    setIsRemediating(true);
+    setError(null);
+    setSuccessMsg('');
+    setTestResults(null);
+    setVerificationResult(null);
+    setRemediationStep('1. Analyzing Issue & Root Cause Context...');
+
+    try {
+      setRemediationStep('2. Generating Fix & Executing Target Tests in Sandbox...');
+      const result = await remediateIssue(targetRepoId, {
+        issueData: {
+          issueId: selectedIssue._id || selectedIssue.id,
+          analysisId: selectedIssue.analysis || selectedIssue.analysisId,
+          filePath: selectedIssue.file,
+          line: selectedIssue.line,
+          description: selectedIssue.description,
+          severity: selectedIssue.severity,
+          recommendation: selectedIssue.recommendation,
+          category: selectedIssue.category,
+        },
+        maxRetries: 3,
+      });
+
+      if (result.fixProposal) {
+        setFixProposal(result.fixProposal);
+      }
+      if (result.testResults) {
+        setTestResults(result.testResults);
+      }
+      if (result.verificationResult) {
+        setVerificationResult(result.verificationResult);
+      }
+      if (result.appliedResult) {
+        setApplyResult(result.appliedResult);
+      }
+
+      if (result.resolved === 'RESOLVED') {
+        const passedCount = result.testResults?.passed || 0;
+        const totalCount = result.testResults?.total || result.testResults?.passed || 1;
+        setSuccessMsg(`✓ Remediation Verified: Fix resolved all target tests (${passedCount}/${totalCount} passed) in ${result.attempts} attempt(s).`);
+      } else {
+        setError({
+          code: 'REMEDIATION_INCOMPLETE',
+          message: result.error || 'Fix did not pass all target tests. Fix was NOT marked resolved.',
+        });
+      }
+
+      // Refresh audit logs
+      fetchAuditTrail(targetRepoId, 10).then((l) => setAuditLogs(l || [])).catch(() => {});
+    } catch (err) {
+      const rawMsg = err.response?.data?.message || err.message || 'Remediation failed.';
+      const cleanMsg = typeof rawMsg === 'string'
+        ? rawMsg
+            .replace(/key=[a-zA-Z0-9_\-]+/gi, 'key=[REDACTED]')
+            .replace(/AIza[a-zA-Z0-9_\-]{35}/g, '[REDACTED_API_KEY]')
+            .replace(/models\/[a-zA-Z0-9_\-\.]+/gi, 'configured Gemini model')
+        : 'Remediation failed.';
+
+      setError({
+        code: 'REMEDIATION_ERROR',
+        message: cleanMsg,
+      });
+    } finally {
+      setIsRemediating(false);
+      setRemediationStep('');
+    }
+  };
+
   const handleDiscardProposal = async () => {
     const activeRepo = findRepo(selectedRepoId);
     const targetRepoId = activeRepo?.repositoryId || activeRepo?._id || selectedRepoId;
@@ -378,6 +463,8 @@ export default function AiFixes() {
     }
     setFixProposal(null);
     setApplyResult(null);
+    setTestResults(null);
+    setVerificationResult(null);
     setSuccessMsg('Fix proposal discarded.');
   };
 
@@ -625,24 +712,38 @@ export default function AiFixes() {
               {/* Target Header Card */}
               <div className="rounded-xl border border-graphite-750 bg-graphite-900/90 p-4 shadow-panel space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-graphite-800 pb-2.5">
-                  <div>
-                    <span className="text-[11px] font-mono text-amber-400 font-semibold uppercase">
-                      Target File: {selectedIssue.file} {selectedIssue.line ? `(line ${selectedIssue.line})` : ''}
-                    </span>
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-mono text-amber-400 font-semibold uppercase">
+                        Target: {selectedIssue.file} {selectedIssue.line ? `(line ${selectedIssue.line})` : ''}
+                      </span>
+                      <span className="text-[10px] font-mono rounded bg-graphite-800 border border-graphite-700 px-2 py-0.5 text-mist-300">
+                        {selectedIssue.category || 'logic'}
+                      </span>
+                    </div>
                     <h3 className="text-sm font-bold text-mist-100 mt-0.5 leading-snug">
                       {selectedIssue.description}
                     </h3>
                   </div>
 
-                  {!fixProposal && (
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
-                      onClick={handleGenerateFix}
-                      disabled={isGenerating}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-amber-400 px-4 py-2 text-xs font-semibold text-graphite-950 hover:bg-amber-300 disabled:opacity-50 transition-all font-mono shadow-sm"
+                      onClick={handleRemediateIssue}
+                      disabled={isRemediating || isGenerating}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-amber-400 px-4 py-2 text-xs font-bold text-graphite-950 hover:bg-amber-300 disabled:opacity-50 transition-all font-mono shadow-sm"
                     >
-                      <span>{isGenerating ? '⏳ Generating Fix…' : '⚡ Generate AI Fix'}</span>
+                      <span>{isRemediating ? '⏳ Remediating & Verifying…' : '⚡ Autonomous Remediate & Verify'}</span>
                     </button>
-                  )}
+                    {!fixProposal && (
+                      <button
+                        onClick={handleGenerateFix}
+                        disabled={isGenerating || isRemediating}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-graphite-700 bg-graphite-800 px-3.5 py-2 text-xs font-semibold text-mist-300 hover:bg-graphite-750 disabled:opacity-50 transition-all font-mono"
+                      >
+                        <span>{isGenerating ? '⏳ Generating…' : 'Generate Diff Only'}</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {selectedIssue.recommendation && (
@@ -651,6 +752,133 @@ export default function AiFixes() {
                   </p>
                 )}
               </div>
+
+              {/* Remediation Active Progress Banner */}
+              {isRemediating && (
+                <div className="rounded-xl border border-amber-400/40 bg-graphite-950 p-4 font-mono text-xs text-amber-300 flex items-center gap-3 animate-pulse shadow-panel">
+                  <span className="text-lg">⚙️</span>
+                  <div className="space-y-0.5 flex-1">
+                    <span className="font-bold block">Autonomous Remediation Workflow Running</span>
+                    <p className="text-mist-300 text-[11px]">{remediationStep || 'Analyzing issue, creating minimal patch, and validating against target test suite...'}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Verification Agent Assessment Badge */}
+              {verificationResult && (
+                <div className="rounded-2xl border border-purple-500/40 bg-graphite-900/95 p-4 shadow-panel space-y-2 animate-fade-in">
+                  <div className="flex items-center justify-between border-b border-graphite-800 pb-2">
+                    <div className="flex items-center gap-2 font-mono">
+                      <span className="text-lg">🛡️</span>
+                      <span className="text-xs font-bold text-mist-100 uppercase tracking-wider">
+                        Verification Agent Status:
+                      </span>
+                      <span
+                        className={`rounded px-2.5 py-0.5 text-xs font-bold uppercase ${
+                          verificationResult.resolved === 'RESOLVED'
+                            ? 'bg-emerald-500/20 text-emerald-400'
+                            : 'bg-rose-500/20 text-rose-400'
+                        }`}
+                      >
+                        {verificationResult.resolved}
+                      </span>
+                      {verificationResult.confidence && (
+                        <span className="text-[11px] text-mist-400">
+                          (Confidence: {Math.round(verificationResult.confidence * 100)}%)
+                        </span>
+                      )}
+                    </div>
+
+                    <Link
+                      to={`/dashboard/pull-requests?repositoryId=${selectedRepo?.repositoryId || selectedRepo?._id || selectedRepoId}&issueId=${selectedIssue?._id || selectedIssue?.id || ''}&branch=${encodeURIComponent(applyResult?.branch || selectedIssue?.fixBranch || '')}`}
+                      className="rounded-lg bg-amber-400 px-3 py-1 text-xs font-bold text-graphite-950 hover:bg-amber-300 font-mono"
+                    >
+                      PR Readiness →
+                    </Link>
+                  </div>
+
+                  <p className="text-xs sm:text-sm text-mist-200 leading-relaxed font-sans">
+                    {verificationResult.reasoning}
+                  </p>
+
+                  {verificationResult.remainingRisks && (
+                    <div className="text-xs font-mono text-mist-400 pt-0.5">
+                      <strong className="text-amber-400">Remaining Risks:</strong> {verificationResult.remainingRisks}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Target Test Execution Scorecard */}
+              {testResults && (
+                <div className="rounded-2xl border border-graphite-750 bg-graphite-900/95 p-4 shadow-panel space-y-3 animate-fade-in">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-graphite-800 pb-2.5">
+                    <div className="flex items-center gap-2 font-mono">
+                      <span
+                        className={`rounded-full px-3 py-0.5 text-xs font-bold uppercase tracking-wider border ${
+                          testResults.status === 'PASS'
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                            : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                        }`}
+                      >
+                        {testResults.status === 'PASS' ? '✓ TARGET TEST SUITE PASSED' : '✕ TARGET TEST SUITE FAILED'}
+                      </span>
+                      <span className="rounded bg-graphite-800 border border-graphite-700 px-2 py-0.5 text-xs font-bold text-amber-300">
+                        {testResults.passed || 0} / {testResults.total || ((testResults.passed || 0) + (testResults.failed || 0)) || 1} passed
+                      </span>
+                    </div>
+
+                    <span className="text-[11px] font-mono text-purple-300 font-semibold">
+                      Runner: {testResults.runner || 'Target Test Runner'}
+                    </span>
+                  </div>
+
+                  {/* Individual Scenarios Grid */}
+                  {Array.isArray(testResults.tests) && testResults.tests.length > 0 && (
+                    <div className="space-y-1.5">
+                      <span className="text-[11px] font-mono uppercase font-bold text-mist-400 block">
+                        Validated Scenarios ({testResults.tests.length}):
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {testResults.tests.map((t, idx) => (
+                          <div
+                            key={idx}
+                            className={`rounded-lg p-2.5 border font-mono text-xs flex flex-col justify-between gap-1 ${
+                              t.status === 'passed'
+                                ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-300'
+                                : 'bg-rose-500/5 border-rose-500/20 text-rose-300'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-semibold truncate text-[11px]">
+                                {t.status === 'passed' ? '✓' : '✕'} {t.name}
+                              </span>
+                              {t.duration && <span className="text-[10px] opacity-70">{t.duration}</span>}
+                            </div>
+                            {t.error && (
+                              <p className="text-[10px] text-rose-400 bg-graphite-950 p-1.5 rounded border border-rose-500/20 break-all">
+                                {t.error}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Output Preview */}
+                  {testResults.stdout && (
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-mono uppercase font-bold text-mist-500 block">
+                        Runner Output:
+                      </span>
+                      <pre className="rounded-lg bg-graphite-950 p-2.5 border border-graphite-800 font-mono text-[11px] text-mist-300 max-h-28 overflow-y-auto whitespace-pre-wrap leading-tight">
+                        {testResults.stdout}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Fix Proposal & Diff Preview Canvas */}
               {fixProposal && (
@@ -722,11 +950,11 @@ export default function AiFixes() {
                         Reject &amp; Discard
                       </button>
                       <button
-                        onClick={handleGenerateFix}
-                        disabled={isGenerating}
+                        onClick={handleRemediateIssue}
+                        disabled={isRemediating}
                         className="rounded-lg border border-graphite-700 bg-graphite-800 px-3.5 py-1.5 text-xs font-semibold text-amber-400 hover:bg-graphite-750 transition-colors font-mono"
                       >
-                        Regenerate
+                        Re-Remediate
                       </button>
                     </div>
 
@@ -755,7 +983,7 @@ export default function AiFixes() {
                           to={`/dashboard/tests?repositoryId=${selectedRepo?.repositoryId || selectedRepo?._id || selectedRepoId}&issueId=${selectedIssue?._id || selectedIssue?.id || ''}&filePath=${encodeURIComponent(selectedIssue?.file || '')}&branch=${encodeURIComponent(applyResult?.branch || selectedIssue?.fixBranch || '')}&analysisId=${encodeURIComponent(selectedIssue?.analysis || selectedIssue?.analysisId || '')}`}
                           className="rounded-lg border border-amber-400/40 bg-amber-400/10 px-3 py-1.5 text-xs font-semibold text-amber-300 hover:bg-amber-400/20 font-mono"
                         >
-                          Generate Tests →
+                          View in Tests →
                         </Link>
                       </div>
                     )}

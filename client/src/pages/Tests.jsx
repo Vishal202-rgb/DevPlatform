@@ -9,6 +9,7 @@ import {
   executeControlledTests,
   verifyFixResolution,
   diagnoseTestFailure,
+  remediateIssue,
 } from '../services/engineeringService';
 
 export default function Tests() {
@@ -28,6 +29,7 @@ export default function Tests() {
   const [verificationResult, setVerificationResult] = useState(null);
   const [isDiagnosing, setIsDiagnosing] = useState(false);
   const [diagnosis, setDiagnosis] = useState(null);
+  const [isRemediating, setIsRemediating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -236,14 +238,29 @@ export default function Tests() {
     setError('');
     setSuccessMsg('');
     try {
-      const result = await executeControlledTests(selectedRepoId, {
-        command: generatedSuite?.suggestedCommand || 'npm test',
-        branch: activeBranch || undefined,
-      });
+      const payload = {
+        repositoryId: selectedRepoId,
+        owner: selectedRepo?.githubOwner || selectedRepo?.owner,
+        repo: selectedRepo?.name,
+        branch: activeBranch || selectedIssue?.testBranch || selectedIssue?.fixBranch || selectedRepo?.defaultBranch,
+        analysisId: selectedIssue?.analysis || selectedIssue?.analysisId || paramAnalysisId,
+        issueId: selectedIssue?._id || selectedIssue?.id || paramIssueId,
+        targetFile: selectedIssue?.file || paramFilePath,
+        filePath: selectedIssue?.file || paramFilePath,
+        testFilePath: generatedSuite?.testFilePath,
+        testCode: generatedSuite?.testCode,
+        language: selectedRepo?.language || (selectedIssue?.file?.endsWith('.c') ? 'c' : undefined),
+        framework: generatedSuite?.framework,
+        suggestedCommand: generatedSuite?.suggestedCommand,
+        command: generatedSuite?.suggestedCommand,
+      };
+      const result = await executeControlledTests(selectedRepoId, payload);
       setTestResults(result);
       saveSessionState({ testResults: result });
       if (result.status === 'PASS') {
-        setSuccessMsg(`Test execution passed (${result.passed || 0} passed).`);
+        setSuccessMsg(`Test execution passed (${result.passed || 0}/${result.total || result.passed || 1} passed).`);
+      } else {
+        setError(`Target test execution failed: ${result.failed || 1} test(s) failed.`);
       }
     } catch (err) {
       setError(err.message || 'Test execution failed.');
@@ -259,8 +276,11 @@ export default function Tests() {
     try {
       const verification = await verifyFixResolution(selectedRepoId, {
         originalIssue: selectedIssue,
+        repository: selectedRepo?.fullName || selectedRepo?.name,
+        targetFile: selectedIssue?.file || paramFilePath,
+        testFilePath: generatedSuite?.testFilePath,
         testCode: generatedSuite?.testCode || '',
-        testResults: testResults || { status: 'PASS' },
+        testResults: testResults || { status: 'NOT_RUN' },
       });
       setVerificationResult(verification);
       saveSessionState({ verificationResult: verification });
@@ -291,6 +311,52 @@ export default function Tests() {
       setDiagnosis(msg);
     } finally {
       setIsDiagnosing(false);
+    }
+  };
+
+  const handleRemediate = async () => {
+    if (!selectedRepoId || !selectedIssue) return;
+    setIsRemediating(true);
+    setError('');
+    setSuccessMsg('');
+    try {
+      const result = await remediateIssue(selectedRepoId, {
+        issueData: {
+          issueId: selectedIssue._id || selectedIssue.id || paramIssueId,
+          analysisId: selectedIssue.analysis || selectedIssue.analysisId || paramAnalysisId,
+          filePath: selectedIssue.file || paramFilePath,
+          line: selectedIssue.line,
+          description: selectedIssue.description,
+          severity: selectedIssue.severity,
+          recommendation: selectedIssue.recommendation,
+          category: selectedIssue.category,
+        },
+        testCode: generatedSuite?.testCode,
+        testFilePath: generatedSuite?.testFilePath,
+        language: selectedRepo?.language || (selectedIssue?.file?.endsWith('.c') ? 'c' : undefined),
+        maxRetries: 3,
+      });
+
+      if (result.testResults) {
+        setTestResults(result.testResults);
+        saveSessionState({ testResults: result.testResults });
+      }
+      if (result.verificationResult) {
+        setVerificationResult(result.verificationResult);
+        saveSessionState({ verificationResult: result.verificationResult });
+      }
+
+      if (result.resolved === 'RESOLVED') {
+        const passedCount = result.testResults?.passed || 0;
+        const totalCount = result.testResults?.total || result.testResults?.passed || 1;
+        setSuccessMsg(`✓ Remediation Verified: AI resolved the root cause and all target tests passed (${passedCount}/${totalCount} passed).`);
+      } else {
+        setError(`Remediation did not resolve all target tests: ${result.error || 'one or more tests failed'}`);
+      }
+    } catch (err) {
+      setError(err.message || 'Remediation request failed.');
+    } finally {
+      setIsRemediating(false);
     }
   };
 
@@ -559,35 +625,110 @@ export default function Tests() {
                       >
                         {testResults.status === 'PASS' ? '✓ TEST SUITE PASSED' : '✕ TEST SUITE FAILED'}
                       </span>
-                      <span className="text-xs text-mist-400">
-                        Command: <code>{testResults.command}</code> ({testResults.duration})
+                      <span className="rounded bg-graphite-800 border border-graphite-700 px-2 py-0.5 text-xs font-bold text-amber-300">
+                        {testResults.passed || 0} / {testResults.total || ((testResults.passed || 0) + (testResults.failed || 0)) || 1} passed
                       </span>
                     </div>
 
                     <div className="flex items-center gap-2 font-mono">
                       {testResults.status === 'FAIL' && (
-                        <button
-                          onClick={handleDiagnose}
-                          disabled={isDiagnosing}
-                          className="rounded-lg bg-amber-400/15 border border-amber-400/40 px-3 py-1 text-xs font-semibold text-amber-300 hover:bg-amber-400/25"
-                        >
-                          {isDiagnosing ? 'Diagnosing…' : '🔍 Ask AI to Diagnose'}
-                        </button>
+                        <>
+                          <button
+                            onClick={handleRemediate}
+                            disabled={isRemediating}
+                            className="rounded-lg bg-amber-400 px-3 py-1 text-xs font-bold text-graphite-950 hover:bg-amber-300 disabled:opacity-50 shadow-sm transition-all"
+                          >
+                            {isRemediating ? '⏳ Remediating & Verifying…' : '⚡ Remediate Issue with AI'}
+                          </button>
+                          <button
+                            onClick={handleDiagnose}
+                            disabled={isDiagnosing || isRemediating}
+                            className="rounded-lg bg-amber-400/15 border border-amber-400/40 px-3 py-1 text-xs font-semibold text-amber-300 hover:bg-amber-400/25 disabled:opacity-50"
+                          >
+                            {isDiagnosing ? 'Diagnosing…' : '🔍 Ask AI to Diagnose'}
+                          </button>
+                        </>
                       )}
 
                       <button
                         onClick={handleVerifyFix}
-                        disabled={isVerifying}
-                        className="rounded-lg bg-purple-500 px-3.5 py-1.5 text-xs font-semibold text-mist-100 hover:bg-purple-400 shadow-sm"
+                        disabled={isVerifying || isRemediating}
+                        className="rounded-lg bg-purple-500 px-3.5 py-1.5 text-xs font-semibold text-mist-100 hover:bg-purple-400 shadow-sm disabled:opacity-50"
                       >
                         {isVerifying ? 'Verifying…' : '🛡️ Verify Fix with AI'}
                       </button>
                     </div>
                   </div>
 
+                  {/* Target Execution Details Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 font-mono text-xs bg-graphite-950/70 p-3.5 rounded-xl border border-graphite-800">
+                    <div>
+                      <span className="text-mist-500 block text-[10px] uppercase font-bold">Repository Under Test</span>
+                      <span className="text-mist-100 font-bold truncate block">{testResults.repository || selectedRepo?.fullName || selectedRepo?.name || 'Target Repo'}</span>
+                    </div>
+                    <div>
+                      <span className="text-mist-500 block text-[10px] uppercase font-bold">Target File</span>
+                      <span className="text-mist-100 font-bold truncate block">{testResults.targetFile || selectedIssue?.file || 'N/A'}</span>
+                    </div>
+                    <div>
+                      <span className="text-mist-500 block text-[10px] uppercase font-bold">Language &amp; Runner</span>
+                      <span className="text-purple-300 font-bold truncate block">
+                        {(testResults.language || 'C').toUpperCase()} &bull; {testResults.runner || 'Target Runner'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-mist-500 block text-[10px] uppercase font-bold">Exit Code &amp; Duration</span>
+                      <span className="text-mist-100 font-bold block">
+                        Code {testResults.exitCode !== undefined ? testResults.exitCode : 0} ({testResults.duration || '0s'})
+                      </span>
+                    </div>
+                    <div className="sm:col-span-2 lg:col-span-4 border-t border-graphite-800/80 pt-2 mt-1">
+                      <span className="text-mist-500 text-[10px] uppercase font-bold mr-2">Execution Command:</span>
+                      <code className="text-amber-300 text-[11px] break-all">{testResults.command || 'Target test execution'}</code>
+                    </div>
+                  </div>
+
+                  {/* Individual Scenario Results if Available */}
+                  {Array.isArray(testResults.tests) && testResults.tests.length > 0 && (
+                    <div className="space-y-2">
+                      <span className="text-[11px] font-mono uppercase font-bold text-mist-400 block">
+                        Test Scenarios ({testResults.tests.length}):
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {testResults.tests.map((t, idx) => (
+                          <div
+                            key={idx}
+                            className={`rounded-lg p-2.5 border font-mono text-xs flex flex-col justify-between gap-1.5 ${
+                              t.status === 'passed'
+                                ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-300'
+                                : 'bg-rose-500/5 border-rose-500/20 text-rose-300'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-semibold truncate text-[11px]">
+                                {t.status === 'passed' ? '✓' : '✕'} {t.name}
+                              </span>
+                              {t.duration && <span className="text-[10px] opacity-70">{t.duration}</span>}
+                            </div>
+                            {t.error && (
+                              <p className="text-[10px] text-rose-400 bg-graphite-950 p-1.5 rounded border border-rose-500/20 break-all">
+                                {t.error}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Output Console */}
-                  <div className="rounded-xl bg-graphite-950 p-3.5 border border-graphite-800 font-mono text-xs text-mist-300 max-h-48 overflow-y-auto whitespace-pre-wrap leading-relaxed shadow-inner">
-                    {testResults.stdout || testResults.stderr || 'Execution completed with 0 errors.'}
+                  <div className="space-y-1">
+                    <span className="text-[11px] font-mono uppercase font-bold text-mist-400 block">
+                      Target Execution Output:
+                    </span>
+                    <div className="rounded-xl bg-graphite-950 p-3.5 border border-graphite-800 font-mono text-xs text-mist-300 max-h-48 overflow-y-auto whitespace-pre-wrap leading-relaxed shadow-inner">
+                      {testResults.stdout || testResults.stderr || 'Execution completed with 0 errors.'}
+                    </div>
                   </div>
 
                   {/* AI Diagnosis Panel */}

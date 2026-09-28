@@ -190,3 +190,89 @@ describe('DevMind Part 3 - AuditLog Action Enum Validation', () => {
     assert.strictEqual(error.errors.action.kind, 'enum');
   });
 });
+
+describe('DevMind AI Remediation Workflow - End-to-End Fix & Target Validation', () => {
+  const fixAgentService = require('../src/services/fixAgentService');
+
+  test('validateProposedFix runs target tests against proposed code in isolated sandbox', async () => {
+    const sampleCSource = `
+#include <stdio.h>
+int main() {
+    printf("Fixed output\\n");
+    return 0;
+}
+`;
+    const sampleTest = `
+describe('fix verification', () => {
+  it('checks fixed output', async () => {
+    const { stdout, code } = await runCProgram();
+    expect(code).toBe(0);
+    expect(stdout).toContain("Fixed output");
+  });
+});
+`;
+    const testResult = await fixAgentService.validateProposedFix('user123', null, {
+      filePath: 'src/example.c',
+      proposedContent: sampleCSource,
+      testCode: sampleTest,
+      language: 'c',
+    });
+
+    assert.strictEqual(testResult.status, 'PASS');
+    assert.strictEqual(testResult.exitCode, 0);
+    assert.strictEqual(testResult.passed, 1);
+  });
+
+  test('validateProposedFix reports failure when proposed code fails target test', async () => {
+    const buggyCSource = `
+#include <stdio.h>
+int main() {
+    printf("Buggy output\\n");
+    return 0;
+}
+`;
+    const strictTest = `
+describe('strict test', () => {
+  it('expects correct output', async () => {
+    const { stdout } = await runCProgram();
+    expect(stdout).toContain("Fixed output");
+  });
+});
+`;
+    const testResult = await fixAgentService.validateProposedFix('user123', null, {
+      filePath: 'src/example.c',
+      proposedContent: buggyCSource,
+      testCode: strictTest,
+      language: 'c',
+    });
+
+    assert.strictEqual(testResult.status, 'FAIL');
+    assert.strictEqual(testResult.exitCode, 1);
+    assert.strictEqual(testResult.failed, 1);
+  });
+
+  test('verification rejects RESOLVED if target test output contains failure evidence', async () => {
+    const payload = {
+      originalIssue: {
+        title: 'Buffer overflow risk in input parser',
+        description: 'Missing input validation allows segmentation fault on negative numbers',
+        file: 'src/parser.c',
+      },
+      targetFile: 'src/parser.c',
+      testResults: {
+        status: 'FAIL',
+        exitCode: 1,
+        passed: 1,
+        failed: 1,
+        total: 2,
+        runner: 'C Target Runner',
+        stdout: '✕ Scenario failed: -5 is largest was not returned',
+        stderr: 'Assertion failed',
+      },
+    };
+
+    const verification = await verificationAgentService.verifyFixResolution(null, null, payload);
+    assert.notStrictEqual(verification.resolved, 'RESOLVED');
+    assert.ok(verification.resolved === 'NOT_RESOLVED' || verification.resolved === 'VERIFICATION_FAILED');
+  });
+});
