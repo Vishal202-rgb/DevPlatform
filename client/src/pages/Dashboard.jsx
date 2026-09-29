@@ -393,196 +393,241 @@ export default function Dashboard() {
       )}
 
       {/* SECTION B: Engineering Health Score Cards (5 Pillars) */}
-      <div className="space-y-3.5">
+      <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-amber-400" />
-            <h2 className="text-xs font-mono font-semibold uppercase tracking-wider text-mist-400">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+            <h2 className="text-xs font-mono font-medium uppercase tracking-wider text-mist-400">
               Engineering Health Pillars
             </h2>
           </div>
-          <span className="text-[11px] font-mono text-mist-500 hidden sm:inline">
+          <span className="text-xs font-mono text-mist-500 hidden sm:inline">
             Real data from AST audits &amp; dependency trees
           </span>
         </div>
 
         <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-5 items-stretch">
           {/* 1. Code Quality */}
-          <div className="flex h-full min-h-[142px] flex-col justify-between rounded-xl border border-graphite-750 bg-graphite-900/90 p-4 shadow-panel transition-all duration-200 hover:border-graphite-600 hover:bg-graphite-850/80">
+          <div className="group flex h-full min-h-[148px] flex-col justify-between rounded-xl border border-graphite-750/90 bg-graphite-900/90 p-4 shadow-panel transition-all duration-150 hover:border-graphite-600 hover:bg-graphite-850/90 hover:-translate-y-0.5">
             <div className="min-w-0">
-              <div className="flex h-6 items-center justify-between gap-2">
-                <span className="truncate text-[11px] font-mono uppercase tracking-wider text-mist-400">
+              <div className="flex h-5 items-center justify-between gap-2">
+                <span className="truncate text-xs font-medium text-mist-300">
                   Code Quality
                 </span>
-                <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-mono border ${codeQualityScore !== null ? scoreBg(codeQualityScore) : 'bg-graphite-800 text-mist-500 border-graphite-700'}`}>
+                <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-mono border ${codeQualityScore !== null ? scoreBg(codeQualityScore) : 'bg-graphite-800 text-mist-500 border-graphite-700'}`}>
                   {codeQualityScore !== null ? 'Live' : 'No data'}
                 </span>
               </div>
-              <div className="mt-2.5 min-w-0">
-                <div className="font-mono text-2xl font-bold tracking-tight tabular-nums">
+              <div className="mt-3 min-w-0">
+                <div className="font-mono text-3xl font-bold tracking-tight tabular-nums">
                   {codeQualityScore !== null ? (
-                    <span className={scoreColor(codeQualityScore)}>{codeQualityScore}/100</span>
+                    <span className={scoreColor(codeQualityScore)}>{codeQualityScore}<span className="text-sm text-mist-500 font-normal">/100</span></span>
                   ) : (
-                    <span className="text-mist-500 text-sm font-normal">Not analyzed</span>
+                    <span className="text-mist-500 text-base font-normal">Not analyzed</span>
                   )}
                 </div>
               </div>
             </div>
-            <div className="mt-3 min-w-0 pt-2 border-t border-graphite-800/80">
-              <p
-                className="truncate text-[11px] text-mist-500 font-mono"
-                title={codeQualityScore !== null ? (codeQualityScore >= 80 ? 'High cleanliness' : 'Review debt') : 'Awaiting first analysis'}
-              >
-                {codeQualityScore !== null
-                  ? codeQualityScore >= 80 ? 'High cleanliness' : 'Review debt'
-                  : 'Awaiting first analysis'}
-              </p>
+
+            {/* Subtle Progress Bar */}
+            <div className="mt-3">
+              <div className="w-full bg-graphite-800/80 rounded-full h-1 overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    codeQualityScore === null ? 'bg-graphite-700' : codeQualityScore >= 80 ? 'bg-emerald-400' : codeQualityScore >= 50 ? 'bg-amber-400' : 'bg-rose-400'
+                  }`}
+                  style={{ width: `${Math.max(0, Math.min(100, codeQualityScore || 0))}%` }}
+                />
+              </div>
+              <div className="mt-2 min-w-0">
+                <p className="truncate text-[11px] text-mist-500 font-mono">
+                  {codeQualityScore !== null
+                    ? codeQualityScore >= 80 ? 'High cleanliness' : 'Review debt'
+                    : 'Awaiting first analysis'}
+                </p>
+              </div>
             </div>
           </div>
 
           {/* 2. Security */}
-          <div className="flex h-full min-h-[142px] flex-col justify-between rounded-xl border border-graphite-750 bg-graphite-900/90 p-4 shadow-panel transition-all duration-200 hover:border-graphite-600 hover:bg-graphite-850/80">
+          <div className="group flex h-full min-h-[148px] flex-col justify-between rounded-xl border border-graphite-750/90 bg-graphite-900/90 p-4 shadow-panel transition-all duration-150 hover:border-graphite-600 hover:bg-graphite-850/90 hover:-translate-y-0.5">
             <div className="min-w-0">
-              <div className="flex h-6 items-center justify-between gap-2">
-                <span className="truncate text-[11px] font-mono uppercase tracking-wider text-mist-400">
+              <div className="flex h-5 items-center justify-between gap-2">
+                <span className="truncate text-xs font-medium text-mist-300">
                   Security
                 </span>
-                <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-mono border ${securityScore !== null ? scoreBg(securityScore) : 'bg-graphite-800 text-mist-500 border-graphite-700'}`}>
+                <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-mono border ${securityScore !== null ? scoreBg(securityScore) : 'bg-graphite-800 text-mist-500 border-graphite-700'}`}>
                   {securityScore !== null ? 'Live' : 'No data'}
                 </span>
               </div>
-              <div className="mt-2.5 min-w-0">
-                <div className="font-mono text-2xl font-bold tracking-tight tabular-nums">
+              <div className="mt-3 min-w-0">
+                <div className="font-mono text-3xl font-bold tracking-tight tabular-nums">
                   {securityScore !== null ? (
-                    <span className={scoreColor(securityScore)}>{securityScore}/100</span>
+                    <span className={scoreColor(securityScore)}>{securityScore}<span className="text-sm text-mist-500 font-normal">/100</span></span>
                   ) : (
-                    <span className="text-mist-500 text-sm font-normal">Not analyzed</span>
+                    <span className="text-mist-500 text-base font-normal">Not analyzed</span>
                   )}
                 </div>
               </div>
             </div>
-            <div className="mt-3 min-w-0 pt-2 border-t border-graphite-800/80">
-              <p
-                className="truncate text-[11px] text-mist-500 font-mono"
-                title={securityScore !== null ? (securityScore >= 80 ? 'Vulnerability safe' : 'Patches pending') : 'Awaiting first analysis'}
-              >
-                {securityScore !== null
-                  ? securityScore >= 80 ? 'Vulnerability safe' : 'Patches pending'
-                  : 'Awaiting first analysis'}
-              </p>
+
+            {/* Subtle Progress Bar */}
+            <div className="mt-3">
+              <div className="w-full bg-graphite-800/80 rounded-full h-1 overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    securityScore === null ? 'bg-graphite-700' : securityScore >= 80 ? 'bg-emerald-400' : securityScore >= 50 ? 'bg-amber-400' : 'bg-rose-400'
+                  }`}
+                  style={{ width: `${Math.max(0, Math.min(100, securityScore || 0))}%` }}
+                />
+              </div>
+              <div className="mt-2 min-w-0">
+                <p className="truncate text-[11px] text-mist-500 font-mono">
+                  {securityScore !== null
+                    ? securityScore >= 80 ? 'Vulnerability safe' : 'Patches pending'
+                    : 'Awaiting first analysis'}
+                </p>
+              </div>
             </div>
           </div>
 
           {/* 3. Architecture */}
-          <div className="flex h-full min-h-[142px] flex-col justify-between rounded-xl border border-graphite-750 bg-graphite-900/90 p-4 shadow-panel transition-all duration-200 hover:border-graphite-600 hover:bg-graphite-850/80">
+          <div className="group flex h-full min-h-[148px] flex-col justify-between rounded-xl border border-graphite-750/90 bg-graphite-900/90 p-4 shadow-panel transition-all duration-150 hover:border-graphite-600 hover:bg-graphite-850/90 hover:-translate-y-0.5">
             <div className="min-w-0">
-              <div className="flex h-6 items-center justify-between gap-2">
-                <span className="truncate text-[11px] font-mono uppercase tracking-wider text-mist-400">
+              <div className="flex h-5 items-center justify-between gap-2">
+                <span className="truncate text-xs font-medium text-mist-300">
                   Architecture
                 </span>
-                <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-mono border ${architectureScore !== null ? scoreBg(architectureScore) : 'bg-graphite-800 text-mist-500 border-graphite-700'}`}>
+                <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-mono border ${architectureScore !== null ? scoreBg(architectureScore) : 'bg-graphite-800 text-mist-500 border-graphite-700'}`}>
                   {architectureScore !== null ? 'Live' : 'No data'}
                 </span>
               </div>
-              <div className="mt-2.5 min-w-0">
-                <div className="font-mono text-2xl font-bold tracking-tight tabular-nums">
+              <div className="mt-3 min-w-0">
+                <div className="font-mono text-3xl font-bold tracking-tight tabular-nums">
                   {architectureScore !== null ? (
-                    <span className={scoreColor(architectureScore)}>{architectureScore}/100</span>
+                    <span className={scoreColor(architectureScore)}>{architectureScore}<span className="text-sm text-mist-500 font-normal">/100</span></span>
                   ) : (
-                    <span className="text-mist-500 text-sm font-normal">Not analyzed</span>
+                    <span className="text-mist-500 text-base font-normal">Not analyzed</span>
                   )}
                 </div>
               </div>
             </div>
-            <div className="mt-3 min-w-0 pt-2 border-t border-graphite-800/80">
-              <p
-                className="truncate text-[11px] text-mist-500 font-mono"
-                title={architectureScore !== null ? (architectureScore >= 80 ? 'Modular decoupled' : 'Coupling detected') : 'Awaiting first analysis'}
-              >
-                {architectureScore !== null
-                  ? architectureScore >= 80 ? 'Modular decoupled' : 'Coupling detected'
-                  : 'Awaiting first analysis'}
-              </p>
+
+            {/* Subtle Progress Bar */}
+            <div className="mt-3">
+              <div className="w-full bg-graphite-800/80 rounded-full h-1 overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    architectureScore === null ? 'bg-graphite-700' : architectureScore >= 80 ? 'bg-emerald-400' : architectureScore >= 50 ? 'bg-amber-400' : 'bg-rose-400'
+                  }`}
+                  style={{ width: `${Math.max(0, Math.min(100, architectureScore || 0))}%` }}
+                />
+              </div>
+              <div className="mt-2 min-w-0">
+                <p className="truncate text-[11px] text-mist-500 font-mono">
+                  {architectureScore !== null
+                    ? architectureScore >= 80 ? 'Modular decoupled' : 'Coupling detected'
+                    : 'Awaiting first analysis'}
+                </p>
+              </div>
             </div>
           </div>
 
           {/* 4. Testing */}
-          <div className="flex h-full min-h-[142px] flex-col justify-between rounded-xl border border-graphite-750 bg-graphite-900/90 p-4 shadow-panel transition-all duration-200 hover:border-graphite-600 hover:bg-graphite-850/80">
+          <div className="group flex h-full min-h-[148px] flex-col justify-between rounded-xl border border-graphite-750/90 bg-graphite-900/90 p-4 shadow-panel transition-all duration-150 hover:border-graphite-600 hover:bg-graphite-850/90 hover:-translate-y-0.5">
             <div className="min-w-0">
-              <div className="flex h-6 items-center justify-between gap-2">
-                <span className="truncate text-[11px] font-mono uppercase tracking-wider text-mist-400">
+              <div className="flex h-5 items-center justify-between gap-2">
+                <span className="truncate text-xs font-medium text-mist-300">
                   Testing
                 </span>
-                <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-mono border ${testingScore !== null ? scoreBg(testingScore) : 'bg-graphite-800 text-mist-500 border-graphite-700'}`}>
+                <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-mono border ${testingScore !== null ? scoreBg(testingScore) : 'bg-graphite-800 text-mist-500 border-graphite-700'}`}>
                   {testingScore !== null ? 'Live' : 'No data'}
                 </span>
               </div>
-              <div className="mt-2.5 min-w-0">
-                <div className="font-mono text-2xl font-bold tracking-tight tabular-nums">
+              <div className="mt-3 min-w-0">
+                <div className="font-mono text-3xl font-bold tracking-tight tabular-nums">
                   {testingScore !== null ? (
-                    <span className={scoreColor(testingScore)}>{testingScore}/100</span>
+                    <span className={scoreColor(testingScore)}>{testingScore}<span className="text-sm text-mist-500 font-normal">/100</span></span>
                   ) : (
-                    <span className="text-mist-500 text-sm font-normal">Not analyzed</span>
+                    <span className="text-mist-500 text-base font-normal">Not analyzed</span>
                   )}
                 </div>
               </div>
             </div>
-            <div className="mt-3 min-w-0 pt-2 border-t border-graphite-800/80">
-              <p
-                className="truncate text-[11px] text-mist-500 font-mono"
-                title={testingScore !== null ? (testingScore >= 80 ? 'Tests verified' : 'Coverage needed') : 'Awaiting first analysis'}
-              >
-                {testingScore !== null
-                  ? testingScore >= 80 ? 'Tests verified' : 'Coverage needed'
-                  : 'Awaiting first analysis'}
-              </p>
+
+            {/* Subtle Progress Bar */}
+            <div className="mt-3">
+              <div className="w-full bg-graphite-800/80 rounded-full h-1 overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    testingScore === null ? 'bg-graphite-700' : testingScore >= 80 ? 'bg-emerald-400' : testingScore >= 50 ? 'bg-amber-400' : 'bg-rose-400'
+                  }`}
+                  style={{ width: `${Math.max(0, Math.min(100, testingScore || 0))}%` }}
+                />
+              </div>
+              <div className="mt-2 min-w-0">
+                <p className="truncate text-[11px] text-mist-500 font-mono">
+                  {testingScore !== null
+                    ? testingScore >= 80 ? 'Tests verified' : 'Coverage needed'
+                    : 'Awaiting first analysis'}
+                </p>
+              </div>
             </div>
           </div>
 
           {/* 5. Maintainability */}
-          <div className="flex h-full min-h-[142px] flex-col justify-between rounded-xl border border-graphite-750 bg-graphite-900/90 p-4 shadow-panel transition-all duration-200 hover:border-graphite-600 hover:bg-graphite-850/80">
+          <div className="group flex h-full min-h-[148px] flex-col justify-between rounded-xl border border-graphite-750/90 bg-graphite-900/90 p-4 shadow-panel transition-all duration-150 hover:border-graphite-600 hover:bg-graphite-850/90 hover:-translate-y-0.5">
             <div className="min-w-0">
-              <div className="flex h-6 items-center justify-between gap-2">
-                <span className="truncate text-[11px] font-mono uppercase tracking-wider text-mist-400">
+              <div className="flex h-5 items-center justify-between gap-2">
+                <span className="truncate text-xs font-medium text-mist-300">
                   Maintainability
                 </span>
-                <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-mono border ${maintainabilityScore !== null ? scoreBg(maintainabilityScore) : 'bg-graphite-800 text-mist-500 border-graphite-700'}`}>
+                <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-mono border ${maintainabilityScore !== null ? scoreBg(maintainabilityScore) : 'bg-graphite-800 text-mist-500 border-graphite-700'}`}>
                   {maintainabilityScore !== null ? 'Live' : 'No data'}
                 </span>
               </div>
-              <div className="mt-2.5 min-w-0">
-                <div className="font-mono text-2xl font-bold tracking-tight tabular-nums">
+              <div className="mt-3 min-w-0">
+                <div className="font-mono text-3xl font-bold tracking-tight tabular-nums">
                   {maintainabilityScore !== null ? (
-                    <span className={scoreColor(maintainabilityScore)}>{maintainabilityScore}/100</span>
+                    <span className={scoreColor(maintainabilityScore)}>{maintainabilityScore}<span className="text-sm text-mist-500 font-normal">/100</span></span>
                   ) : (
-                    <span className="text-mist-500 text-sm font-normal">Not analyzed</span>
+                    <span className="text-mist-500 text-base font-normal">Not analyzed</span>
                   )}
                 </div>
               </div>
             </div>
-            <div className="mt-3 min-w-0 pt-2 border-t border-graphite-800/80">
-              <p
-                className="truncate text-[11px] text-mist-500 font-mono"
-                title={maintainabilityScore !== null ? (maintainabilityScore >= 80 ? 'Low technical debt' : 'Smells detected') : 'Awaiting first analysis'}
-              >
-                {maintainabilityScore !== null
-                  ? maintainabilityScore >= 80 ? 'Low technical debt' : 'Smells detected'
-                  : 'Awaiting first analysis'}
-              </p>
+
+            {/* Subtle Progress Bar */}
+            <div className="mt-3">
+              <div className="w-full bg-graphite-800/80 rounded-full h-1 overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    maintainabilityScore === null ? 'bg-graphite-700' : maintainabilityScore >= 80 ? 'bg-emerald-400' : maintainabilityScore >= 50 ? 'bg-amber-400' : 'bg-rose-400'
+                  }`}
+                  style={{ width: `${Math.max(0, Math.min(100, maintainabilityScore || 0))}%` }}
+                />
+              </div>
+              <div className="mt-2 min-w-0">
+                <p className="truncate text-[11px] text-mist-500 font-mono">
+                  {maintainabilityScore !== null
+                    ? maintainabilityScore >= 80 ? 'Low technical debt' : 'Smells detected'
+                    : 'Awaiting first analysis'}
+                </p>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* SECTION D: Quick Actions Command Center */}
-      <div className="rounded-2xl border border-graphite-750 bg-graphite-900/90 p-5 shadow-panel">
-        <div className="flex items-center justify-between border-b border-graphite-800 pb-3 mb-4">
+      <div className="rounded-xl border border-graphite-750/90 bg-graphite-900/90 p-5 shadow-panel">
+        <div className="flex items-center justify-between border-b border-graphite-800/80 pb-3 mb-4">
           <div className="flex items-center gap-2">
             <span className="text-xs font-mono font-semibold uppercase tracking-wider text-amber-400">
               Quick Actions
             </span>
           </div>
-          <span className="text-[11px] font-mono text-mist-500">
+          <span className="text-xs font-mono text-mist-500">
             One-click workflows
           </span>
         </div>
@@ -590,7 +635,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <Link
             to="/dashboard/repositories"
-            className="flex items-center gap-3 rounded-xl border border-graphite-750 bg-graphite-850/80 p-3.5 hover:border-amber-400/40 hover:bg-graphite-800 transition-all group"
+            className="flex items-center gap-3 rounded-xl border border-graphite-750/80 bg-graphite-850/50 p-3.5 hover:border-amber-400/40 hover:bg-graphite-800/80 hover:-translate-y-0.5 transition-all duration-150 group"
           >
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-400/10 text-amber-400 font-mono group-hover:scale-105 transition-transform border border-amber-400/20">
               ⚡
@@ -605,7 +650,7 @@ export default function Dashboard() {
 
           <Link
             to="/dashboard/architecture"
-            className="flex items-center gap-3 rounded-xl border border-graphite-750 bg-graphite-850/80 p-3.5 hover:border-purple-400/40 hover:bg-graphite-800 transition-all group"
+            className="flex items-center gap-3 rounded-xl border border-graphite-750/80 bg-graphite-850/50 p-3.5 hover:border-purple-400/40 hover:bg-graphite-800/80 hover:-translate-y-0.5 transition-all duration-150 group"
           >
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-purple-500/10 text-purple-400 font-mono group-hover:scale-105 transition-transform border border-purple-500/20">
               🗺️
@@ -620,7 +665,7 @@ export default function Dashboard() {
 
           <Link
             to="/dashboard/chat"
-            className="flex items-center gap-3 rounded-xl border border-graphite-750 bg-graphite-850/80 p-3.5 hover:border-sky-400/40 hover:bg-graphite-800 transition-all group"
+            className="flex items-center gap-3 rounded-xl border border-graphite-750/80 bg-graphite-850/50 p-3.5 hover:border-sky-400/40 hover:bg-graphite-800/80 hover:-translate-y-0.5 transition-all duration-150 group"
           >
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-sky-400 font-mono group-hover:scale-105 transition-transform border border-sky-500/20">
               💬
@@ -635,7 +680,7 @@ export default function Dashboard() {
 
           <Link
             to="/dashboard/issues"
-            className="flex items-center gap-3 rounded-xl border border-graphite-750 bg-graphite-850/80 p-3.5 hover:border-rose-400/40 hover:bg-graphite-800 transition-all group"
+            className="flex items-center gap-3 rounded-xl border border-graphite-750/80 bg-graphite-850/50 p-3.5 hover:border-rose-400/40 hover:bg-graphite-800/80 hover:-translate-y-0.5 transition-all duration-150 group"
           >
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-rose-500/10 text-rose-400 font-mono group-hover:scale-105 transition-transform border border-rose-500/20">
               🛡️

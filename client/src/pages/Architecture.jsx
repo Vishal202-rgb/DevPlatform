@@ -7,10 +7,10 @@ import { useToast } from '../hooks/useToast';
 import { fetchGithubRepositories } from '../services/githubService';
 
 const CATEGORIES = [
-  { id: 'all', label: 'All Modules', color: '#F5B942' },
+  { id: 'all', label: 'All Modules', color: '#D89A16' },
   { id: 'routes', label: 'Routes', color: '#38BDF8' },
   { id: 'controllers', label: 'Controllers', color: '#818CF8' },
-  { id: 'services', label: 'Services', color: '#F59E0B' },
+  { id: 'services', label: 'Services', color: '#D89A16' },
   { id: 'models', label: 'Models', color: '#10B981' },
   { id: 'components', label: 'Components', color: '#F97316' },
   { id: 'middleware', label: 'Middleware', color: '#A855F7' },
@@ -385,18 +385,18 @@ export default function Architecture() {
       if (isSelected || isHovered) {
         ctx.beginPath();
         ctx.arc(node.x, node.y, r + 4, 0, 2 * Math.PI, false);
-        ctx.fillStyle = isSelected ? 'rgba(245, 185, 66, 0.35)' : 'rgba(255, 255, 255, 0.25)';
+        ctx.fillStyle = isSelected ? 'rgba(216, 154, 22, 0.35)' : 'rgba(255, 255, 255, 0.25)';
         ctx.fill();
 
         ctx.lineWidth = 1.5 / globalScale;
-        ctx.strokeStyle = isSelected ? '#F5B942' : '#FFFFFF';
+        ctx.strokeStyle = isSelected ? '#D89A16' : '#FFFFFF';
         ctx.stroke();
       }
 
       // Node base circle
       ctx.beginPath();
       ctx.arc(node.x, node.y, r, 0, 2 * Math.PI, false);
-      ctx.fillStyle = node.color || '#F5B942';
+      ctx.fillStyle = node.color || '#D89A16';
       ctx.fill();
 
       ctx.lineWidth = 1 / globalScale;
@@ -426,7 +426,7 @@ export default function Architecture() {
           fontSize + textPadding
         );
 
-        ctx.fillStyle = isSelected ? '#F5B942' : '#E2E8F0';
+        ctx.fillStyle = isSelected ? '#D89A16' : '#E2E8F0';
         ctx.fillText(displayLabel, node.x, textY);
       }
 
@@ -444,7 +444,7 @@ export default function Architecture() {
 
       if (activeNode) {
         if (srcId === activeNode.id || tgtId === activeNode.id) {
-          return '#F59E0B'; // Highlight connected links in amber
+          return '#D89A16'; // Highlight connected links in warm amber
         }
         return 'rgba(50, 60, 85, 0.12)';
       }
@@ -532,7 +532,7 @@ export default function Architecture() {
           {/* Explain with AI Action */}
           <button
             onClick={() => handleAskAI(selectedNode)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-sky-400/30 bg-sky-500/10 px-3 py-1.5 text-xs font-semibold text-sky-300 hover:bg-sky-500/20 transition-colors shadow-sm"
+            className="btn-ai !text-xs !py-1.5 !px-3"
             title="Explain repository architecture with AI"
           >
             <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -544,7 +544,7 @@ export default function Architecture() {
           <button
             onClick={handleAnalyze}
             disabled={isAnalyzing || !activeRepoId}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-amber-400 px-3.5 py-1.5 text-xs font-semibold text-graphite-950 transition-all hover:bg-amber-300 disabled:opacity-50 active:scale-95 shadow-sm"
+            className="btn-primary !text-xs !py-1.5 !px-3.5"
             title="Re-scan codebase and rebuild architecture graph"
           >
             <svg
@@ -853,7 +853,7 @@ export default function Architecture() {
                     <div className="flex items-center gap-2">
                       <span
                         className="rounded-md px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-graphite-950"
-                        style={{ backgroundColor: selectedNode.color || '#F5B942' }}
+                        style={{ backgroundColor: selectedNode.color || '#D89A16' }}
                       >
                         {selectedNode.category || selectedNode.type || 'Module'}
                       </span>
@@ -1007,7 +1007,7 @@ export default function Architecture() {
               linkDirectionalParticles={1.5}
               linkDirectionalParticleSpeed={0.006}
               linkDirectionalParticleWidth={2}
-              linkDirectionalParticleColor={() => '#F59E0B'}
+              linkDirectionalParticleColor={() => '#D89A16'}
               backgroundColor="#090B10"
               width={dimensions.width}
               height={dimensions.height}

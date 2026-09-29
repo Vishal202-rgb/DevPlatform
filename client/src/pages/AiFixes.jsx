@@ -730,7 +730,7 @@ export default function AiFixes() {
                     <button
                       onClick={handleRemediateIssue}
                       disabled={isRemediating || isGenerating}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-amber-400 px-4 py-2 text-xs font-bold text-graphite-950 hover:bg-amber-300 disabled:opacity-50 transition-all font-mono shadow-sm"
+                      className="btn-primary text-xs"
                     >
                       <span>{isRemediating ? '⏳ Remediating & Verifying…' : '⚡ Autonomous Remediate & Verify'}</span>
                     </button>
@@ -738,7 +738,7 @@ export default function AiFixes() {
                       <button
                         onClick={handleGenerateFix}
                         disabled={isGenerating || isRemediating}
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-graphite-700 bg-graphite-800 px-3.5 py-2 text-xs font-semibold text-mist-300 hover:bg-graphite-750 disabled:opacity-50 transition-all font-mono"
+                        className="btn-secondary text-xs"
                       >
                         <span>{isGenerating ? '⏳ Generating…' : 'Generate Diff Only'}</span>
                       </button>
@@ -945,14 +945,14 @@ export default function AiFixes() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={handleDiscardProposal}
-                        className="rounded-lg border border-graphite-700 bg-graphite-800 px-3.5 py-1.5 text-xs font-semibold text-mist-400 hover:text-mist-200 transition-colors font-mono"
+                        className="btn-ghost text-xs text-mist-400 font-mono"
                       >
                         Reject &amp; Discard
                       </button>
                       <button
                         onClick={handleRemediateIssue}
                         disabled={isRemediating}
-                        className="rounded-lg border border-graphite-700 bg-graphite-800 px-3.5 py-1.5 text-xs font-semibold text-amber-400 hover:bg-graphite-750 transition-colors font-mono"
+                        className="btn-secondary text-xs text-amber-400 font-mono"
                       >
                         Re-Remediate
                       </button>
@@ -962,7 +962,7 @@ export default function AiFixes() {
                       <button
                         onClick={handleApplyFix}
                         disabled={isApplying}
-                        className="rounded-xl bg-amber-400 px-5 py-2 text-xs font-semibold text-graphite-950 hover:bg-amber-300 disabled:opacity-50 transition-all shadow-sm font-mono active:scale-95"
+                        className="btn-primary text-xs font-mono"
                       >
                         {isApplying ? '⏳ Validating & Committing…' : '✓ Accept & Apply Fix'}
                       </button>
@@ -974,14 +974,14 @@ export default function AiFixes() {
                             href={applyResult.compareUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="rounded-lg bg-emerald-400 px-3 py-1.5 text-xs font-semibold text-graphite-950 hover:bg-emerald-300"
+                            className="btn-secondary text-xs text-emerald-400 border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20"
                           >
                             Compare on GitHub ↗
                           </a>
                         )}
                         <Link
                           to={`/dashboard/tests?repositoryId=${selectedRepo?.repositoryId || selectedRepo?._id || selectedRepoId}&issueId=${selectedIssue?._id || selectedIssue?.id || ''}&filePath=${encodeURIComponent(selectedIssue?.file || '')}&branch=${encodeURIComponent(applyResult?.branch || selectedIssue?.fixBranch || '')}&analysisId=${encodeURIComponent(selectedIssue?.analysis || selectedIssue?.analysisId || '')}`}
-                          className="rounded-lg border border-amber-400/40 bg-amber-400/10 px-3 py-1.5 text-xs font-semibold text-amber-300 hover:bg-amber-400/20 font-mono"
+                          className="btn-secondary text-xs text-amber-300 border-amber-400/30 bg-amber-400/10 hover:bg-amber-400/20"
                         >
                           View in Tests →
                         </Link>

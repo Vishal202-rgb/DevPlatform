@@ -64,7 +64,7 @@ export default function CreatePrModal({
       }
       if (!description) {
         setDescription(
-          `## Summary\nAutomated fix proposed by DevPlatform AI for ${issue.file || 'repository'}.\n\n## Changes\n- Applied remediation for identified ${issue.category || 'issue'}.\n\n## Why\n${issue.description || 'Address code review finding.'}\n\n## Testing\n- Validated regression test pass.`
+          `## Summary\nAutomated fix proposed by DevMind AI for ${issue.file || 'repository'}.\n\n## Changes\n- Applied remediation for identified ${issue.category || 'issue'}.\n\n## Why\n${issue.description || 'Address code review finding.'}\n\n## Testing\n- Validated regression test pass.`
         );
       }
       if (targetBranch) {

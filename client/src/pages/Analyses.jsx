@@ -71,7 +71,7 @@ export default function Analyses() {
       )}
 
       {isLoading ? (
-        <div className="overflow-hidden rounded-2xl border border-graphite-750 bg-graphite-900 shadow-panel">
+        <div className="overflow-hidden dm-card">
           <table className="w-full text-left text-xs sm:text-sm">
             <thead className="border-b border-graphite-800 bg-graphite-850/80 font-mono text-[11px] uppercase tracking-wider text-mist-400">
               <tr>
@@ -100,7 +100,7 @@ export default function Analyses() {
           actionLink="/dashboard/repositories"
         />
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-graphite-750 bg-graphite-900/90 shadow-panel">
+        <div className="overflow-x-auto dm-card">
           <table className="w-full text-left text-xs sm:text-sm whitespace-nowrap">
             <thead className="border-b border-graphite-800 bg-graphite-850/80 font-mono text-[11px] uppercase tracking-wider text-mist-400">
               <tr>
@@ -173,7 +173,7 @@ export default function Analyses() {
                     {a.repository && (
                       <Link
                         to={`/dashboard/repositories/${a.repository._id}/analysis`}
-                        className="rounded-lg border border-graphite-700 bg-graphite-800 px-3 py-1.5 text-xs font-medium text-mist-200 hover:border-amber-400/50 hover:text-amber-400 transition-colors"
+                        className="btn-secondary !text-xs !py-1.5 !px-3 font-mono"
                       >
                         View Report →
                       </Link>

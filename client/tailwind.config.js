@@ -4,31 +4,59 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Linear / Vercel inspired dark obsidian scale
+        // DevMind Dark Obsidian Design System
         graphite: {
-          950: '#090B10', // page background
-          900: '#10131C', // card/panel background
-          850: '#161A26', // elevated modal / popover
-          800: '#1D2232', // input background / secondary surface
-          700: '#2A3249', // subtle borders
-          600: '#3C4665', // stronger borders / focus baseline
-          500: '#5F6D8F', // muted icons / tertiary text
+          950: '#080B12', // Background: #080B12
+          900: '#11151D', // Cards/Surface: #11151D
+          850: '#181D27', // Hover Surface: #181D27
+          800: '#141923', // Inset / Sub-surface: #141923
+          750: '#252B36', // Borders: #252B36
+          700: '#252B36', // Borders: #252B36
+          600: '#353D4D', // Active / Focused borders
+          500: '#667085', // Muted Text: #667085
         },
-        // Premium amber accent for buttons, badges, highlights
-        amber: {
-          300: '#FCD34D',
-          400: '#F59E0B', // primary accent
-          500: '#D97706', // hover accent
-          600: '#B45309', // active
-        },
-        // Crisp high-contrast text scale
+        // Text scale
         mist: {
-          100: '#F8FAFC', // primary heading / strong text
-          200: '#E2E8F0', // secondary headings / inputs
-          300: '#CBD5E1', // body copy
-          400: '#94A3B8', // supporting descriptions
-          500: '#64748B', // muted metadata & hints
-          600: '#475569', // placeholder text
+          100: '#F5F7FA', // Primary Text: #F5F7FA
+          200: '#E4E7EC', // Secondary Headings
+          300: '#C8D1DE', // Secondary Text light
+          400: '#9AA3B2', // Secondary Text: #9AA3B2
+          500: '#667085', // Muted Text: #667085
+          600: '#475467', // Subdued placeholders
+        },
+        // Primary Brand Accent: Premium Warm Amber
+        amber: {
+          300: '#E0A11A', // Primary Hover: #E0A11A
+          400: '#D89A16', // Primary Brand Accent: #D89A16
+          500: '#C2870F', // Active / Pressed: #C2870F
+          600: '#A36F0A',
+        },
+        // Semantic System
+        emerald: {
+          300: '#86EFAC',
+          400: '#22C55E', // Success: #22C55E
+          500: '#16A34A',
+        },
+        rose: {
+          300: '#FCA5A5',
+          400: '#EF4444', // Error: #EF4444
+          500: '#DC2626',
+        },
+        orange: {
+          300: '#FDBA74',
+          400: '#F97316',
+          500: '#EA580C',
+        },
+        sky: {
+          300: '#93C5FD',
+          400: '#60A5FA', // Info: #60A5FA
+          500: '#3B82F6',
+        },
+        purple: {
+          300: '#D8B4FE',
+          400: '#A855F7', // AI/Purple: #A855F7
+          500: '#9333EA',
+          600: '#7E22CE',
         },
       },
       fontFamily: {
@@ -36,16 +64,17 @@ export default {
         mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
       },
       boxShadow: {
-        panel: '0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 12px 28px -12px rgba(0, 0, 0, 0.6)',
-        'panel-hover': '0 4px 20px -2px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(245, 158, 11, 0.15)',
-        glow: '0 0 25px -5px rgba(245, 158, 11, 0.25)',
-        'glow-sm': '0 0 12px -2px rgba(245, 158, 11, 0.2)',
+        panel: '0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 6px 16px -4px rgba(0, 0, 0, 0.5)',
+        'panel-hover': '0 2px 6px 0 rgba(0, 0, 0, 0.5), 0 10px 24px -4px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(245, 158, 11, 0.15)',
+        glow: '0 0 20px -4px rgba(245, 158, 11, 0.2)',
+        'glow-sm': '0 0 10px -2px rgba(245, 158, 11, 0.15)',
+        'glow-purple': '0 0 12px -2px rgba(168, 85, 247, 0.2)',
       },
       animation: {
-        'fade-in': 'fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-        'scale-in': 'scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-        'slide-up': 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-        shimmer: 'shimmer 2s infinite linear',
+        'fade-in': 'fadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1)',
+        'scale-in': 'scaleIn 0.15s cubic-bezier(0.16, 1, 0.3, 1)',
+        'slide-up': 'slideUp 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
+        shimmer: 'shimmer 1.8s infinite linear',
       },
       keyframes: {
         fadeIn: {
@@ -53,11 +82,11 @@ export default {
           '100%': { opacity: '1' },
         },
         scaleIn: {
-          '0%': { opacity: '0', transform: 'scale(0.96)' },
+          '0%': { opacity: '0', transform: 'scale(0.98)' },
           '100%': { opacity: '1', transform: 'scale(1)' },
         },
         slideUp: {
-          '0%': { opacity: '0', transform: 'translateY(8px)' },
+          '0%': { opacity: '0', transform: 'translateY(4px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
         shimmer: {

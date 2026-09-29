@@ -132,7 +132,7 @@ export default function Security() {
             <select
               value={selectedAuditRepoId}
               onChange={(e) => setSelectedAuditRepoId(e.target.value)}
-              className="rounded-lg border border-graphite-750 bg-graphite-900 px-3 py-1.5 font-mono text-xs text-mist-100 outline-none focus:border-amber-400"
+              className="rounded-lg border border-graphite-750 bg-graphite-900 px-3 py-1.5 font-mono text-xs text-mist-100 outline-none focus:border-amber-400 transition-colors"
             >
               {repos.map((r) => (
                 <option key={r.repositoryId || r.githubId} value={r.repositoryId || r._id}>
@@ -145,7 +145,7 @@ export default function Security() {
           <button
             onClick={handleRunSecurityAudit}
             disabled={isAuditing || !selectedAuditRepoId}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-amber-400/40 bg-amber-400/10 px-3.5 py-2 text-xs font-semibold text-amber-400 transition-colors hover:bg-amber-400/20 disabled:opacity-50 font-mono"
+            className="btn-ai"
           >
             <span>{isAuditing ? '🛡️ Running Security Agent…' : '🛡️ Run Security Agent Audit'}</span>
           </button>
@@ -157,7 +157,7 @@ export default function Security() {
           <span>{error}</span>
           <button
             onClick={loadSecurityData}
-            className="rounded-lg bg-rose-500/20 px-3 py-1 text-xs font-semibold text-rose-200 hover:bg-rose-500/30"
+            className="rounded-lg bg-rose-500/20 px-3 py-1 text-xs font-semibold text-rose-200 hover:bg-rose-500/30 transition-colors"
           >
             Retry
           </button>
@@ -166,13 +166,13 @@ export default function Security() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-graphite-750 bg-graphite-900/90 p-4 shadow-panel">
-          <span className="text-[11px] font-mono uppercase tracking-wider text-mist-400 block">
+        <div className="dm-card dm-card-hover p-5">
+          <span className="text-xs font-mono text-mist-400 block font-medium">
             Security Health Score
           </span>
           <div className="mt-2 flex items-baseline gap-2">
             <span
-              className={`text-2xl font-bold font-mono ${
+              className={`text-3xl font-bold font-mono tracking-tight tabular-nums ${
                 securityScore === null
                   ? 'text-mist-500'
                   : securityScore >= 80
@@ -185,7 +185,7 @@ export default function Security() {
               {securityScore !== null ? `${securityScore}/100` : 'Not analyzed'}
             </span>
           </div>
-          <p className="mt-1 text-[11px] text-mist-500 font-mono">
+          <p className="mt-1 text-xs text-mist-500 font-mono">
             {securityScore !== null
               ? securityScore >= 80
                 ? 'Strong security posture'
@@ -194,44 +194,44 @@ export default function Security() {
           </p>
         </div>
 
-        <div className="rounded-xl border border-graphite-750 bg-graphite-900/90 p-4 shadow-panel">
-          <span className="text-[11px] font-mono uppercase tracking-wider text-rose-400 block font-semibold">
+        <div className="dm-card dm-card-hover p-5">
+          <span className="text-xs font-mono text-rose-400 block font-semibold">
             Critical Flaws
           </span>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono text-rose-400">
+            <span className="text-3xl font-bold font-mono text-rose-400 tracking-tight tabular-nums">
               {auditResult ? (auditResult.summary?.critical || 0) : criticalCount}
             </span>
           </div>
-          <p className="mt-1 text-[11px] text-mist-500 font-mono">
+          <p className="mt-1 text-xs text-mist-500 font-mono">
             Requires immediate branch patch
           </p>
         </div>
 
-        <div className="rounded-xl border border-graphite-750 bg-graphite-900/90 p-4 shadow-panel">
-          <span className="text-[11px] font-mono uppercase tracking-wider text-orange-400 block font-semibold">
+        <div className="dm-card dm-card-hover p-5">
+          <span className="text-xs font-mono text-orange-400 block font-semibold">
             High Severity
           </span>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono text-orange-400">
+            <span className="text-3xl font-bold font-mono text-orange-400 tracking-tight tabular-nums">
               {auditResult ? (auditResult.summary?.high || 0) : highCount}
             </span>
           </div>
-          <p className="mt-1 text-[11px] text-mist-500 font-mono">
+          <p className="mt-1 text-xs text-mist-500 font-mono">
             Elevated vulnerability risk
           </p>
         </div>
 
-        <div className="rounded-xl border border-graphite-750 bg-graphite-900/90 p-4 shadow-panel">
-          <span className="text-[11px] font-mono uppercase tracking-wider text-mist-400 block">
+        <div className="dm-card dm-card-hover p-5">
+          <span className="text-xs font-mono text-mist-400 block font-medium">
             Audited Repositories
           </span>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono text-mist-100">
+            <span className="text-3xl font-bold font-mono text-mist-100 tracking-tight tabular-nums">
               {repos.length}
             </span>
           </div>
-          <p className="mt-1 text-[11px] text-mist-500 font-mono">
+          <p className="mt-1 text-xs text-mist-500 font-mono">
             Active codebases in workspace
           </p>
         </div>
@@ -239,7 +239,7 @@ export default function Security() {
 
       {/* Security Agent Audit Results Live Panel */}
       {auditResult && (
-        <div className="rounded-2xl border border-amber-400/40 bg-graphite-900/95 p-5 shadow-panel space-y-4 animate-fade-in">
+        <div className="dm-card p-5 space-y-4 border-amber-400/30 animate-fade-in">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-graphite-800 pb-3">
             <div className="flex items-center gap-2">
               <span className="text-lg">🛡️</span>
@@ -400,7 +400,7 @@ export default function Security() {
           {filteredIssues.map((issue, idx) => (
             <div
               key={issue._id || idx}
-              className="rounded-xl border border-graphite-750 bg-graphite-900/90 p-4 shadow-panel hover:border-graphite-600 transition-colors"
+              className="dm-card p-4 hover:border-graphite-650 transition-colors"
             >
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                 <div className="space-y-1.5 min-w-0 flex-1">
@@ -444,7 +444,7 @@ export default function Security() {
                   {issue.repository && (
                     <Link
                       to={`/dashboard/repositories/${issue.repository.id}/analysis`}
-                      className="rounded-lg border border-graphite-750 bg-graphite-800 px-3 py-1.5 text-xs font-semibold text-mist-200 hover:border-amber-400/50 hover:text-amber-400 transition-colors"
+                      className="btn-secondary !text-xs !py-1.5 !px-3"
                     >
                       View in Report →
                     </Link>

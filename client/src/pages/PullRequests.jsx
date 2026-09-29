@@ -155,36 +155,36 @@ export default function PullRequests() {
 
       {/* PR Readiness Checklist KPI Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-graphite-750 bg-graphite-900/90 p-4 shadow-panel">
-          <span className="text-[11px] font-mono uppercase tracking-wider text-mist-400 block">
+        <div className="dm-card dm-card-hover p-5">
+          <span className="text-xs font-mono text-mist-400 block font-medium">
             Opened Pull Requests
           </span>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono text-emerald-400">
+            <span className="text-3xl font-bold font-mono text-emerald-400 tracking-tight tabular-nums">
               {prList.length}
             </span>
           </div>
-          <p className="mt-1 text-[11px] text-mist-500 font-mono">
+          <p className="mt-1 text-xs text-mist-500 font-mono">
             Active PRs on GitHub
           </p>
         </div>
 
-        <div className="rounded-xl border border-graphite-750 bg-graphite-900/90 p-4 shadow-panel">
-          <span className="text-[11px] font-mono uppercase tracking-wider text-amber-400 block font-semibold">
+        <div className="dm-card dm-card-hover p-5">
+          <span className="text-xs font-mono text-amber-400 block font-semibold">
             Ready for PR Submission
           </span>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono text-amber-400">
+            <span className="text-3xl font-bold font-mono text-amber-400 tracking-tight tabular-nums">
               {readyForPrList.length}
             </span>
           </div>
-          <p className="mt-1 text-[11px] text-mist-500 font-mono">
+          <p className="mt-1 text-xs text-mist-500 font-mono">
             Branches with applied fixes/tests
           </p>
         </div>
 
-        <div className="rounded-xl border border-graphite-750 bg-graphite-900/90 p-4 shadow-panel">
-          <span className="text-[11px] font-mono uppercase tracking-wider text-purple-400 block font-semibold">
+        <div className="dm-card dm-card-hover p-5">
+          <span className="text-xs font-mono text-purple-400 block font-semibold">
             Verification Standard
           </span>
           <div className="mt-2 flex items-baseline gap-2">
@@ -192,13 +192,13 @@ export default function PullRequests() {
               5 Checkpoints
             </span>
           </div>
-          <p className="mt-1 text-[11px] text-mist-500 font-mono">
+          <p className="mt-1 text-xs text-mist-500 font-mono">
             Diff, tests, security, impact, AI signoff
           </p>
         </div>
 
-        <div className="rounded-xl border border-graphite-750 bg-graphite-900/90 p-4 shadow-panel">
-          <span className="text-[11px] font-mono uppercase tracking-wider text-mist-400 block">
+        <div className="dm-card dm-card-hover p-5">
+          <span className="text-xs font-mono text-mist-400 block font-medium">
             Git Safety Protocol
           </span>
           <div className="mt-2 flex items-baseline gap-2">
@@ -206,7 +206,7 @@ export default function PullRequests() {
               Isolated Branches
             </span>
           </div>
-          <p className="mt-1 text-[11px] text-mist-500 font-mono">
+          <p className="mt-1 text-xs text-mist-500 font-mono">
             Zero direct commits to main
           </p>
         </div>
@@ -218,7 +218,7 @@ export default function PullRequests() {
           <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-amber-400">
             ⚡ Branches Ready for PR Creation ({readyForPrList.length})
           </h2>
-          <div className="overflow-x-auto rounded-2xl border border-graphite-750 bg-graphite-900/90 shadow-panel">
+          <div className="overflow-x-auto dm-card">
             <table className="w-full text-left text-xs whitespace-nowrap">
               <thead className="border-b border-graphite-800 bg-graphite-850/80 font-mono text-[11px] uppercase tracking-wider text-mist-400">
                 <tr>
@@ -241,7 +241,7 @@ export default function PullRequests() {
                     <td className="px-4 py-3 text-right">
                       <button
                         onClick={() => handleOpenPrModal(issue)}
-                        className="rounded-lg bg-amber-400 px-3 py-1 text-xs font-bold text-graphite-950 hover:bg-amber-300 transition-all font-mono shadow-sm"
+                        className="btn-primary !text-xs !py-1 !px-3 font-mono"
                       >
                         Create Pull Request →
                       </button>
@@ -275,7 +275,7 @@ export default function PullRequests() {
             actionLink="/dashboard/ai-fixes"
           />
         ) : (
-          <div className="overflow-x-auto rounded-2xl border border-graphite-750 bg-graphite-900/90 shadow-panel">
+          <div className="overflow-x-auto dm-card">
             <table className="w-full text-left text-xs sm:text-sm whitespace-nowrap">
               <thead className="border-b border-graphite-800 bg-graphite-850/80 font-mono text-[11px] uppercase tracking-wider text-mist-400">
                 <tr>
@@ -305,7 +305,7 @@ export default function PullRequests() {
                           href={pr.prUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1 rounded-lg bg-amber-400 px-3 py-1 text-xs font-semibold text-graphite-950 hover:bg-amber-300 transition-colors shadow-sm font-mono"
+                          className="btn-primary !text-xs !py-1 !px-3 font-mono inline-flex items-center gap-1"
                         >
                           <span>View on GitHub ↗</span>
                         </a>

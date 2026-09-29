@@ -177,7 +177,7 @@ export default function Repositories() {
           <button
             onClick={loadRepos}
             disabled={isLoading}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-graphite-750 bg-graphite-800 px-3.5 py-2 text-xs font-semibold text-mist-300 transition-colors hover:bg-graphite-750 hover:text-mist-100 disabled:opacity-50"
+            className="btn-secondary !text-xs !py-2 !px-3.5"
             title="Refresh from GitHub"
           >
             <svg
@@ -408,7 +408,7 @@ export default function Repositories() {
                     setSelectedRepoOverview(null);
                     handleAnalyze(r);
                   }}
-                  className="flex items-center justify-center gap-2 rounded-xl bg-amber-400 px-4 py-2.5 text-xs font-bold text-graphite-950 hover:bg-amber-300 transition-colors shadow-sm"
+                  className="btn-primary"
                 >
                   <span>⚡</span>
                   <span>Run Analysis</span>
@@ -418,42 +418,42 @@ export default function Repositories() {
                   <>
                     <Link
                       to={`/dashboard/repositories/${selectedRepoOverview.repositoryId}/architecture`}
-                      className="flex items-center justify-center gap-2 rounded-xl border border-graphite-750 bg-graphite-850 px-4 py-2.5 text-xs font-semibold text-purple-300 hover:bg-graphite-800 hover:border-purple-400/40 transition-colors"
+                      className="btn-secondary !text-xs !py-2.5 text-purple-300 hover:text-purple-200"
                     >
                       <span>🗺️</span>
-                      <span>Architecture Graph</span>
+                      <span>Architecture</span>
                     </Link>
 
                     <Link
                       to={`/dashboard/repositories/${selectedRepoOverview.repositoryId}/chat`}
-                      className="flex items-center justify-center gap-2 rounded-xl border border-graphite-750 bg-graphite-850 px-4 py-2.5 text-xs font-semibold text-sky-300 hover:bg-graphite-800 hover:border-sky-400/40 transition-colors"
+                      className="btn-secondary !text-xs !py-2.5 text-sky-300 hover:text-sky-200"
                     >
                       <span>💬</span>
-                      <span>Codebase AI Chat</span>
+                      <span>AI Chat</span>
                     </Link>
 
                     <Link
                       to={`/dashboard/repositories/${selectedRepoOverview.repositoryId}/analysis`}
-                      className="flex items-center justify-center gap-2 rounded-xl border border-graphite-750 bg-graphite-850 px-4 py-2.5 text-xs font-semibold text-amber-400 hover:bg-graphite-800 hover:border-amber-400/40 transition-colors"
+                      className="btn-secondary !text-xs !py-2.5 text-amber-300 hover:text-amber-200"
                     >
                       <span>🛡️</span>
-                      <span>Review Issues</span>
+                      <span>Issues</span>
                     </Link>
 
                     <Link
                       to="/dashboard/tests"
-                      className="flex items-center justify-center gap-2 rounded-xl border border-graphite-750 bg-graphite-850 px-4 py-2.5 text-xs font-semibold text-emerald-300 hover:bg-graphite-800 hover:border-emerald-400/40 transition-colors"
+                      className="btn-secondary !text-xs !py-2.5 text-emerald-300 hover:text-emerald-200"
                     >
                       <span>🧪</span>
-                      <span>Generate Tests</span>
+                      <span>Tests</span>
                     </Link>
 
                     <Link
                       to="/dashboard/pull-requests"
-                      className="flex items-center justify-center gap-2 rounded-xl border border-graphite-750 bg-graphite-850 px-4 py-2.5 text-xs font-semibold text-indigo-300 hover:bg-graphite-800 hover:border-indigo-400/40 transition-colors"
+                      className="btn-secondary !text-xs !py-2.5 text-indigo-300 hover:text-indigo-200"
                     >
                       <span>🔀</span>
-                      <span>Open PR</span>
+                      <span>PRs</span>
                     </Link>
                   </>
                 )}

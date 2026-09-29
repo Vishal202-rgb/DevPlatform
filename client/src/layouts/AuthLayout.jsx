@@ -35,7 +35,7 @@ export default function AuthLayout() {
           className="absolute inset-0 opacity-[0.04] pointer-events-none"
           style={{
             backgroundImage:
-              'linear-gradient(#F59E0B 1px, transparent 1px), linear-gradient(90deg, #F59E0B 1px, transparent 1px)',
+              'linear-gradient(#D89A16 1px, transparent 1px), linear-gradient(90deg, #D89A16 1px, transparent 1px)',
             backgroundSize: '40px 40px',
           }}
         />

@@ -50,9 +50,9 @@ export default function RepositoryCard({
   const filesCount = repo.lastAnalysis?.filesAnalyzed;
 
   return (
-    <div className="group relative flex flex-col justify-between rounded-xl border border-graphite-750 bg-graphite-900/90 p-5 shadow-panel transition-all duration-200 hover:border-graphite-600 hover:bg-graphite-850/80 hover:shadow-panel-hover">
+    <div className="group relative flex flex-col justify-between rounded-xl border border-graphite-750/90 bg-graphite-900/90 p-5 shadow-panel transition-all duration-150 hover:border-graphite-600 hover:bg-graphite-850/90 hover:shadow-panel-hover hover:-translate-y-0.5">
       {/* Top highlight hairline */}
-      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-graphite-600/30 to-transparent" />
+      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-graphite-600/25 to-transparent pointer-events-none" />
 
       <div className="space-y-3">
         {/* Repo Header */}

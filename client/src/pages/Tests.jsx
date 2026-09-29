@@ -538,7 +538,7 @@ export default function Tests() {
                     <button
                       onClick={handleGenerateTests}
                       disabled={isGenerating}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-purple-500 px-4 py-2 text-xs font-semibold text-mist-100 hover:bg-purple-400 disabled:opacity-50 transition-all font-mono shadow-sm"
+                      className="btn-ai text-xs"
                     >
                       <span>{isGenerating ? '⏳ Generating Test Suite…' : '🧪 Generate 4-Scenario Tests'}</span>
                     </button>
@@ -554,7 +554,7 @@ export default function Tests() {
 
               {/* Generated Test Suite Preview Canvas */}
               {generatedSuite && (
-                <div className="rounded-2xl border border-graphite-750 bg-graphite-900/95 shadow-panel overflow-hidden space-y-0 animate-fade-in">
+                <div className="rounded-xl border border-graphite-750/90 bg-graphite-900/95 shadow-panel overflow-hidden space-y-0 animate-fade-in">
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-graphite-800 px-5 py-3.5 bg-graphite-850/90">
                     <div className="flex items-center gap-2 font-mono text-xs">
                       <span className="font-bold text-mist-100">{generatedSuite.testFilePath}</span>
@@ -568,7 +568,7 @@ export default function Tests() {
                         <button
                           onClick={handleApplyTests}
                           disabled={isApplyingTests}
-                          className="rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-bold text-graphite-950 hover:bg-amber-300 disabled:opacity-50 shadow-sm transition-all"
+                          className="btn-primary text-xs"
                         >
                           <span>{isApplyingTests ? '⏳ Committing Tests…' : '✓ Apply Tests to Repository'}</span>
                         </button>
@@ -580,7 +580,7 @@ export default function Tests() {
                               href={applyTestResult.compareUrl}
                               target="_blank"
                               rel="noreferrer"
-                              className="rounded-lg bg-emerald-400 px-2.5 py-1 text-[11px] font-bold text-graphite-950 hover:bg-emerald-300"
+                              className="btn-secondary text-xs text-emerald-400 border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20"
                             >
                               Compare on GitHub ↗
                             </a>
@@ -591,7 +591,7 @@ export default function Tests() {
                       <button
                         onClick={handleRunTests}
                         disabled={isRunningTests}
-                        className="rounded-lg bg-emerald-400 px-3 py-1.5 text-xs font-bold text-graphite-950 hover:bg-emerald-300 disabled:opacity-50 shadow-sm transition-all flex items-center gap-1.5"
+                        className="btn-success text-xs"
                       >
                         <span>{isRunningTests ? '⏳ Running…' : '▶ Run Test Runner'}</span>
                       </button>
@@ -617,7 +617,7 @@ export default function Tests() {
 
               {/* Test Execution Results Dashboard */}
               {testResults && (
-                <div className="rounded-2xl border border-graphite-750 bg-graphite-900/95 p-5 shadow-panel space-y-4 animate-fade-in">
+                <div className="rounded-xl border border-graphite-750/90 bg-graphite-900/95 p-5 shadow-panel space-y-4 animate-fade-in">
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-graphite-800 pb-3">
                     <div className="flex items-center gap-2 font-mono">
                       <span
@@ -640,14 +640,14 @@ export default function Tests() {
                           <button
                             onClick={handleRemediate}
                             disabled={isRemediating}
-                            className="rounded-lg bg-amber-400 px-3 py-1 text-xs font-bold text-graphite-950 hover:bg-amber-300 disabled:opacity-50 shadow-sm transition-all"
+                            className="btn-primary text-xs"
                           >
                             {isRemediating ? '⏳ Remediating & Verifying…' : '⚡ Remediate Issue with AI'}
                           </button>
                           <button
                             onClick={handleDiagnose}
                             disabled={isDiagnosing || isRemediating}
-                            className="rounded-lg bg-amber-400/15 border border-amber-400/40 px-3 py-1 text-xs font-semibold text-amber-300 hover:bg-amber-400/25 disabled:opacity-50"
+                            className="btn-ai text-xs"
                           >
                             {isDiagnosing ? 'Diagnosing…' : '🔍 Ask AI to Diagnose'}
                           </button>
@@ -657,7 +657,7 @@ export default function Tests() {
                       <button
                         onClick={handleVerifyFix}
                         disabled={isVerifying || isRemediating}
-                        className="rounded-lg bg-purple-500 px-3.5 py-1.5 text-xs font-semibold text-mist-100 hover:bg-purple-400 shadow-sm disabled:opacity-50"
+                        className="btn-ai text-xs"
                       >
                         {isVerifying ? 'Verifying…' : '🛡️ Verify Fix with AI'}
                       </button>

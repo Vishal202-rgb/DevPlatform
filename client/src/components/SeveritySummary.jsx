@@ -3,7 +3,7 @@ export const severityConfig = {
     label: 'Critical',
     color: '#EF4444',
     bg: 'bg-rose-500/10',
-    border: 'border-rose-500/30',
+    border: 'border-rose-500/20',
     text: 'text-rose-400',
     dot: 'bg-rose-400',
   },
@@ -11,23 +11,23 @@ export const severityConfig = {
     label: 'High',
     color: '#F97316',
     bg: 'bg-orange-500/10',
-    border: 'border-orange-500/30',
+    border: 'border-orange-500/20',
     text: 'text-orange-400',
     dot: 'bg-orange-400',
   },
   medium: {
     label: 'Medium',
-    color: '#F59E0B',
+    color: '#D89A16',
     bg: 'bg-amber-500/10',
-    border: 'border-amber-500/30',
+    border: 'border-amber-500/20',
     text: 'text-amber-400',
     dot: 'bg-amber-400',
   },
   low: {
     label: 'Low',
-    color: '#38BDF8',
+    color: '#60A5FA',
     bg: 'bg-sky-500/10',
-    border: 'border-sky-500/30',
+    border: 'border-sky-500/20',
     text: 'text-sky-400',
     dot: 'bg-sky-400',
   },
@@ -49,10 +49,10 @@ export default function SeveritySummary({ summary, activeSeverity, onSelectSever
             onClick={() => onSelectSeverity && onSelectSeverity(isSelected ? 'all' : key)}
             role={onSelectSeverity ? 'button' : undefined}
             tabIndex={onSelectSeverity ? 0 : undefined}
-            className={`group relative overflow-hidden rounded-xl border p-4 shadow-panel transition-all ${
+            className={`group relative overflow-hidden rounded-xl border p-4 shadow-panel transition-all duration-150 ${
               isSelected
                 ? `${cfg.border} ${cfg.bg} ring-1 ring-amber-400/40`
-                : 'border-graphite-750 bg-graphite-900/80 hover:border-graphite-600 hover:bg-graphite-850/60'
+                : 'border-graphite-750 bg-graphite-900 hover:border-graphite-600 hover:bg-graphite-850'
             } ${onSelectSeverity ? 'cursor-pointer select-none active:scale-[0.98]' : ''}`}
           >
             {/* Top hairline */}

@@ -240,7 +240,7 @@ function IssueRow({ issue, analysisId, readOnly }) {
                   href={issueState.fixCompareUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-1.5 text-xs font-semibold text-emerald-400 transition-colors hover:bg-emerald-500/20"
+                  className="btn-secondary text-xs text-emerald-400 border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20"
                 >
                   <span>View Fix Branch</span>
                   <span>↗</span>
@@ -251,7 +251,7 @@ function IssueRow({ issue, analysisId, readOnly }) {
                       href={issueState.prUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="rounded-lg border border-purple-500/30 bg-purple-500/10 px-3.5 py-1.5 text-xs font-semibold text-purple-300 transition-colors hover:bg-purple-500/20"
+                      className="btn-ai text-xs"
                     >
                       PR #{issueState.prNumber} Open ↗
                     </a>
@@ -262,7 +262,7 @@ function IssueRow({ issue, analysisId, readOnly }) {
                         setPrModalBranchType('fix');
                         setIsPrModalOpen(true);
                       }}
-                      className="rounded-lg bg-amber-400 px-3.5 py-1.5 text-xs font-semibold text-graphite-950 transition-colors hover:bg-amber-300 shadow-sm"
+                      className="btn-primary text-xs"
                     >
                       Create Pull Request
                     </button>
@@ -273,7 +273,7 @@ function IssueRow({ issue, analysisId, readOnly }) {
               <button
                 onClick={handleApplyFix}
                 disabled={isApplying}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-amber-400 px-3.5 py-1.5 text-xs font-semibold text-graphite-950 transition-all hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60 shadow-sm active:scale-95"
+                className="btn-primary text-xs"
               >
                 {isApplying ? (
                   <>
@@ -295,7 +295,7 @@ function IssueRow({ issue, analysisId, readOnly }) {
               <button
                 onClick={handleGenerateTests}
                 disabled={isGeneratingTests}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-graphite-700 bg-graphite-800 px-3.5 py-1.5 text-xs font-semibold text-mist-200 transition-colors hover:border-amber-400/50 hover:text-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
+                className="btn-secondary text-xs"
               >
                 {isGeneratingTests ? (
                   <>
@@ -347,7 +347,7 @@ function IssueRow({ issue, analysisId, readOnly }) {
                 <button
                   onClick={handleApplyTests}
                   disabled={isApplyingTests}
-                  className="rounded-lg bg-emerald-400 px-3.5 py-1.5 text-xs font-semibold text-graphite-950 transition-colors hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60 shadow-sm"
+                  className="btn-success text-xs"
                 >
                   {isApplyingTests ? 'Committing Tests…' : 'Apply Tests to Repository'}
                 </button>
@@ -358,7 +358,7 @@ function IssueRow({ issue, analysisId, readOnly }) {
                       href={issueState.testCompareUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-400 transition-colors hover:bg-emerald-500/20"
+                      className="btn-secondary text-xs text-emerald-400 border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20"
                     >
                       View test branch →
                     </a>
@@ -368,7 +368,7 @@ function IssueRow({ issue, analysisId, readOnly }) {
                           href={issueState.prUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="rounded-lg border border-purple-500/30 bg-purple-500/10 px-3 py-1.5 text-xs font-semibold text-purple-300 transition-colors hover:bg-purple-500/20"
+                          className="btn-ai text-xs"
                         >
                           PR #{issueState.prNumber} Open ↗
                         </a>
@@ -379,7 +379,7 @@ function IssueRow({ issue, analysisId, readOnly }) {
                             setPrModalBranchType('test');
                             setIsPrModalOpen(true);
                           }}
-                          className="rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-semibold text-graphite-950 transition-colors hover:bg-amber-300 shadow-sm"
+                          className="btn-primary text-xs"
                         >
                           Create Pull Request
                         </button>

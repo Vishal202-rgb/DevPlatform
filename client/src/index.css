@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -11,9 +11,10 @@ html, body, #root {
 body {
   @apply bg-graphite-950 text-mist-100 font-sans antialiased selection:bg-amber-400/20 selection:text-amber-300;
   color-scheme: dark;
+  background-color: #080B12;
 }
 
-/* Custom sleek scrollbars */
+/* Custom sleek developer platform scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -24,17 +25,17 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #2A3249;
+  background: #252B36;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #3C4665;
+  background: #353D4D;
 }
 
-/* Accessible focus ring */
+/* Accessible and visible focus ring */
 :focus-visible {
-  outline: 2px solid #F59E0B;
+  outline: 2px solid #D89A16;
   outline-offset: 2px;
 }
 
@@ -42,35 +43,66 @@ body {
 .skeleton-shimmer {
   background: linear-gradient(
     90deg,
-    rgba(22, 26, 38, 0.7) 0%,
-    rgba(42, 50, 73, 0.9) 50%,
-    rgba(22, 26, 38, 0.7) 100%
+    rgba(17, 21, 29, 0.8) 0%,
+    rgba(37, 43, 54, 0.9) 50%,
+    rgba(17, 21, 29, 0.8) 100%
   );
   background-size: 200% 100%;
   animation: shimmer 1.8s infinite linear;
 }
 
-/* Linear-style subtle card border glow */
-.card-subtle {
-  background: #10131C;
-  border: 1px solid #2A3249;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 10px 24px -10px rgba(0, 0, 0, 0.5);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+/* Consistent design system card and button components */
+@layer components {
+  /* Surface card token - sleek, uncluttered */
+  .dm-card {
+    @apply rounded-xl border border-graphite-750/90 bg-graphite-900 shadow-panel transition-all duration-150;
+  }
+
+  .dm-card-hover {
+    @apply hover:border-graphite-600 hover:bg-graphite-850/90 hover:shadow-panel-hover hover:-translate-y-0.5;
+  }
+
+  /* Primary Button: Amber/Orange brand accent */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-amber-400 px-4 py-2 text-xs sm:text-sm font-semibold text-graphite-950 transition-all duration-150 hover:bg-amber-300 active:scale-[0.98] shadow-sm disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100;
+  }
+
+  /* Secondary Button: Clean graphite surface with subtle border */
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-graphite-750 bg-graphite-850 px-3.5 py-2 text-xs sm:text-sm font-medium text-mist-200 transition-all duration-150 hover:bg-graphite-800 hover:border-graphite-600 hover:text-mist-100 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100;
+  }
+
+  /* AI Action Button: Purple accent strictly reserved for AI */
+  .btn-ai {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-purple-500/30 bg-purple-500/10 px-4 py-2 text-xs sm:text-sm font-semibold text-purple-300 transition-all duration-150 hover:bg-purple-500/20 hover:border-purple-400/50 hover:text-purple-200 active:scale-[0.98] shadow-sm disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100;
+  }
+
+  /* Success Button */
+  .btn-success {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2 text-xs sm:text-sm font-semibold text-graphite-950 transition-all duration-150 hover:bg-emerald-400 active:scale-[0.98] shadow-sm disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100;
+  }
+
+  /* Danger Button */
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3.5 py-2 text-xs sm:text-sm font-medium text-rose-300 transition-all duration-150 hover:bg-rose-500/20 hover:border-rose-500/50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100;
+  }
+
+  /* Ghost Button */
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-mist-400 transition-colors duration-150 hover:bg-graphite-800 hover:text-mist-100 active:scale-[0.98];
+  }
+
+  /* Code diff line styles */
+  .diff-add {
+    @apply bg-emerald-500/10 text-emerald-300 border-l-2 border-emerald-400;
+  }
+
+  .diff-del {
+    @apply bg-rose-500/10 text-rose-300 border-l-2 border-rose-400;
+  }
+
+  .diff-info {
+    @apply bg-sky-500/10 text-sky-300 border-l-2 border-sky-400;
+  }
 }
 
-.card-subtle:hover {
-  border-color: #3C4665;
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(245, 158, 11, 0.12);
-}
-
-/* Grid texture utility */
-.bg-grid-pattern {
-  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
-  background-size: 24px 24px;
-}
-
-/* Radial spotlight glow */
-.bg-spotlight {
-  background: radial-gradient(600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(245, 158, 11, 0.06), transparent 40%);
-}

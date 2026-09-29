@@ -338,7 +338,7 @@ export default function Chat() {
           <button
             onClick={handleIndexKnowledge}
             disabled={isIndexing || !activeRepoId}
-            className="rounded-lg border border-amber-400/40 bg-amber-400/10 px-3 py-1 text-xs font-semibold text-amber-400 hover:bg-amber-400/20 transition-colors disabled:opacity-50 flex items-center gap-1.5 font-mono"
+            className="btn-ai !text-xs !py-1 !px-3 font-mono"
           >
             <span>{isIndexing ? '⏳ Indexing...' : '⚡ Re-index RAG'}</span>
           </button>
@@ -346,7 +346,7 @@ export default function Chat() {
           {messages.length > 0 && (
             <button
               onClick={() => setMessages([])}
-              className="rounded-lg border border-graphite-750 bg-graphite-800 px-3 py-1 text-xs font-semibold text-mist-400 hover:bg-graphite-750 hover:text-mist-100 transition-colors"
+              className="btn-secondary !text-xs !py-1 !px-3"
             >
               Clear
             </button>
@@ -382,7 +382,7 @@ export default function Chat() {
       </div>
 
       {/* Messages Canvas */}
-      <div className="flex-1 overflow-y-auto rounded-2xl border border-graphite-750 bg-graphite-900/80 p-4 sm:p-6 shadow-panel">
+      <div className="flex-1 overflow-y-auto dm-card p-4 sm:p-6">
         {messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-center p-6 space-y-6">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400/20 to-purple-500/20 border border-amber-400/30 text-amber-400 shadow-glow-sm">
@@ -402,7 +402,7 @@ export default function Chat() {
 
             {/* Starter chips for current mode */}
             <div className="w-full max-w-lg space-y-2">
-              <p className="text-[11px] font-mono uppercase tracking-wider text-mist-400">
+              <p className="text-xs font-mono uppercase tracking-wider text-mist-400 font-medium">
                 Suggested {activeMode.toUpperCase()} Inquiries
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -410,7 +410,7 @@ export default function Chat() {
                   <button
                     key={idx}
                     onClick={() => sendQuery(prompt)}
-                    className="flex items-center justify-between rounded-xl border border-graphite-750 bg-graphite-850/90 p-3 text-left text-xs text-mist-300 transition-all hover:border-amber-400/40 hover:bg-graphite-800 hover:text-mist-100 group"
+                    className="flex items-center justify-between rounded-xl border border-graphite-750 bg-graphite-850/90 p-3 text-left text-xs text-mist-300 transition-all hover:border-amber-400/40 hover:bg-graphite-800 hover:text-mist-100 hover:-translate-y-0.5 group"
                   >
                     <span>{prompt}</span>
                     <span className="text-mist-500 group-hover:text-amber-400 group-hover:translate-x-0.5 transition-all shrink-0 ml-2 font-mono">
@@ -493,7 +493,7 @@ export default function Chat() {
         <button
           type="submit"
           disabled={isLoading || !input.trim() || (!activeRepoId && !urlRepoId)}
-          className="inline-flex items-center gap-2 rounded-xl bg-amber-400 px-5 py-3 text-xs sm:text-sm font-semibold text-graphite-950 transition-all hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-50 shadow-sm active:scale-95 shrink-0"
+          className="btn-primary !px-5 !py-3 shrink-0"
         >
           <span>Send</span>
           <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">

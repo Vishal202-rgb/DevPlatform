@@ -1,12 +1,12 @@
 function scoreDetails(score) {
-  if (score >= 85) return { color: '#10B981', label: 'Optimal', grade: 'A+' };
-  if (score >= 70) return { color: '#34D399', label: 'Good', grade: 'A' };
-  if (score >= 50) return { color: '#F59E0B', label: 'Moderate', grade: 'B' };
-  if (score >= 30) return { color: '#F97316', label: 'Needs Attention', grade: 'C' };
+  if (score >= 85) return { color: '#22C55E', label: 'Optimal', grade: 'A+' };
+  if (score >= 70) return { color: '#22C55E', label: 'Good', grade: 'A' };
+  if (score >= 50) return { color: '#D89A16', label: 'Moderate', grade: 'B' };
+  if (score >= 30) return { color: '#F97316', label: 'Attention', grade: 'C' };
   return { color: '#EF4444', label: 'Critical Debt', grade: 'D' };
 }
 
-export default function ScoreGauge({ score, size = 140 }) {
+export default function ScoreGauge({ score, size = 136 }) {
   const radius = (size - 16) / 2;
   const circumference = 2 * Math.PI * radius;
   const clamped = Math.max(0, Math.min(100, score ?? 0));
@@ -18,7 +18,7 @@ export default function ScoreGauge({ score, size = 140 }) {
       <div className="relative" style={{ width: size, height: size }}>
         {/* Glow backdrop */}
         <div
-          className="absolute inset-0 rounded-full blur-xl opacity-20 transition-all pointer-events-none"
+          className="absolute inset-0 rounded-full blur-xl opacity-15 transition-all pointer-events-none"
           style={{ backgroundColor: color }}
         />
 
@@ -29,7 +29,7 @@ export default function ScoreGauge({ score, size = 140 }) {
             cy={size / 2}
             r={radius}
             fill="none"
-            stroke="#1D2232"
+            stroke="#141923"
             strokeWidth="8"
           />
           {/* Animated fill circle */}
@@ -52,7 +52,7 @@ export default function ScoreGauge({ score, size = 140 }) {
             dominantBaseline="middle"
             textAnchor="middle"
             className="font-mono"
-            fill="#F8FAFC"
+            fill="#F5F7FA"
             fontSize={size * 0.28}
             fontWeight="700"
           >
@@ -64,7 +64,7 @@ export default function ScoreGauge({ score, size = 140 }) {
             dominantBaseline="middle"
             textAnchor="middle"
             className="font-mono"
-            fill="#64748B"
+            fill="#667085"
             fontSize={size * 0.1}
             fontWeight="600"
           >

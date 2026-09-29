@@ -32,13 +32,13 @@ export default function SharedAnalysis() {
         {/* Brand Header */}
         <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-graphite-800 pb-5">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-500 font-mono text-sm font-bold text-graphite-950 shadow-glow-sm">
-              Dv
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-400 font-mono text-sm font-bold text-graphite-950 shadow-sm">
+              DM
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-mono text-sm font-semibold tracking-tight text-mist-100">
-                  DevPlatform
+                  DevMind
                 </span>
                 <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-mono text-emerald-400 font-semibold">
                   Verified Audit
@@ -49,14 +49,14 @@ export default function SharedAnalysis() {
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="rounded-lg border border-graphite-700 bg-graphite-900 px-3 py-1.5 text-xs font-mono text-mist-400">
+            <span className="rounded-lg border border-graphite-750 bg-graphite-900 px-3 py-1.5 text-xs font-mono text-mist-400">
               Read-Only View
             </span>
             <Link
               to="/login"
               className="rounded-lg bg-amber-400 px-4 py-2 text-xs font-semibold text-graphite-950 hover:bg-amber-300 transition-colors shadow-sm"
             >
-              Sign In to DevPlatform
+              Sign In to DevMind
             </Link>
           </div>
         </header>
@@ -76,7 +76,7 @@ export default function SharedAnalysis() {
             }
             title="Unable to Access Shared Report"
             description={error}
-            actionLabel="Go to DevPlatform"
+            actionLabel="Go to DevMind"
             actionLink="/login"
             isError
           />
@@ -151,7 +151,7 @@ export default function SharedAnalysis() {
         {/* Footer */}
         <footer className="pt-8 pb-4 text-center text-xs font-mono text-mist-500 border-t border-graphite-800/80">
           <p>
-            Generated with <span className="text-mist-200 font-semibold">DevPlatform</span> — AI Developer Productivity Suite.
+            Generated with <span className="text-mist-200 font-semibold">DevMind</span> — AI Software Platform.
           </p>
         </footer>
       </div>

@@ -217,7 +217,7 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile = () => {} }
         {/* Brand Header */}
         <div className="mb-5 flex items-center justify-between px-2 pt-1 shrink-0">
           <Link to="/dashboard" className="flex items-center gap-2.5 group">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-amber-500 font-mono text-xs font-bold text-graphite-950 shadow-glow-sm transition-transform group-hover:scale-105">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-400 font-mono text-xs font-bold text-graphite-950 shadow-glow-sm transition-transform group-hover:scale-105">
               DM
             </div>
             <div>
@@ -225,7 +225,7 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile = () => {} }
                 <span className="font-mono text-sm font-semibold tracking-tight text-mist-100">
                   DevMind
                 </span>
-                <span className="rounded bg-amber-400/10 px-1.5 py-0.5 text-[9px] font-mono font-semibold uppercase text-amber-400 border border-amber-400/20">
+                <span className="rounded bg-amber-400/10 px-1.5 py-0.5 text-[9px] font-mono font-semibold uppercase text-amber-400 border border-amber-400/25">
                   v2.0
                 </span>
               </div>
@@ -237,7 +237,7 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile = () => {} }
           {mobileOpen && (
             <button
               onClick={onCloseMobile}
-              className="rounded-lg p-1.5 text-mist-400 hover:bg-graphite-800 hover:text-mist-100 md:hidden"
+              className="rounded-lg p-1.5 text-mist-400 hover:bg-graphite-850 hover:text-mist-100 md:hidden"
               aria-label="Close navigation"
             >
               <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -255,7 +255,7 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile = () => {} }
         <div className="space-y-4 pb-4">
           {navSections.map((section) => (
             <div key={section.title}>
-              <div className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-wider text-mist-500 font-mono">
+              <div className="mb-1.5 px-3 text-[10px] font-mono font-medium uppercase tracking-wider text-mist-500">
                 {section.title}
               </div>
               <nav className="flex flex-col gap-0.5">
@@ -265,19 +265,16 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile = () => {} }
                     <NavLink
                       key={item.to}
                       to={item.to}
-                      className={`flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all relative ${
+                      className={`flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-150 relative ${
                         isActive
-                          ? 'bg-amber-400/10 text-amber-400 border border-amber-400/25 shadow-sm font-semibold'
-                          : 'text-mist-400 hover:bg-graphite-800/70 hover:text-mist-100 border border-transparent'
+                          ? 'bg-graphite-850 text-mist-50 font-semibold border-l-2 border-amber-400 pl-2.5 shadow-sm'
+                          : 'text-mist-400 hover:bg-graphite-850/60 hover:text-mist-200 border-l-2 border-transparent'
                       }`}
                     >
-                      <span className={`shrink-0 ${isActive ? 'text-amber-400' : 'text-mist-400'}`}>
+                      <span className={`shrink-0 transition-colors ${isActive ? 'text-amber-400' : 'text-mist-400'}`}>
                         {item.icon}
                       </span>
                       <span className="flex-1 truncate">{item.label}</span>
-                      {isActive && (
-                        <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shadow-glow-sm" />
-                      )}
                     </NavLink>
                   );
                 })}
@@ -288,19 +285,19 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile = () => {} }
       </div>
 
       {/* Footer Area: Platform status & User Profile */}
-      <div className="space-y-2.5 pt-3 border-t border-graphite-800 shrink-0">
+      <div className="space-y-2 pt-3 border-t border-graphite-800/80 shrink-0">
         {/* Status indicator */}
-        <div className="rounded-xl border border-graphite-750 bg-graphite-850/60 p-2.5 text-xs">
+        <div className="rounded-xl border border-graphite-750/80 bg-graphite-850/40 p-2.5 text-xs">
           <div className="flex items-center justify-between">
-            <span className="font-mono text-[10px] uppercase tracking-wide text-mist-400">Platform</span>
-            <span className="flex items-center gap-1.5 text-[10px] font-medium text-emerald-400">
+            <span className="font-mono text-[10px] text-mist-400">Platform</span>
+            <span className="flex items-center gap-1.5 text-[10px] font-medium text-emerald-400 font-mono">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
               Operational
             </span>
           </div>
           <Link
             to="/dashboard/system-health"
-            className="mt-1.5 flex items-center justify-between text-[11px] text-mist-300 hover:text-amber-400 transition-colors font-medium"
+            className="mt-1 flex items-center justify-between text-[11px] text-mist-300 hover:text-amber-400 transition-colors"
           >
             <span>Diagnostics &amp; Health</span>
             <span className="text-mist-500">→</span>
@@ -308,9 +305,9 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile = () => {} }
         </div>
 
         {/* User Profile Card */}
-        <div className="flex items-center justify-between rounded-xl border border-graphite-750 bg-graphite-850/40 p-2">
+        <div className="flex items-center justify-between rounded-xl border border-graphite-750/80 bg-graphite-850/40 p-2">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-graphite-800 font-mono text-xs font-bold text-amber-400 border border-graphite-700">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-graphite-800 font-mono text-xs font-bold text-amber-400 border border-graphite-750">
               {initialsFor(user?.name) || 'U'}
             </div>
             <div className="min-w-0">
@@ -343,7 +340,7 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile = () => {} }
   return (
     <>
       {/* Desktop static sidebar */}
-      <aside className="hidden w-64 shrink-0 border-r border-graphite-800 bg-graphite-900/95 px-3 py-4 md:flex md:flex-col h-full">
+      <aside className="hidden w-64 shrink-0 border-r border-graphite-750 bg-graphite-900 px-3 py-4 md:flex md:flex-col h-full">
         {sidebarContent}
       </aside>
 
@@ -363,3 +360,4 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile = () => {} }
     </>
   );
 }
+

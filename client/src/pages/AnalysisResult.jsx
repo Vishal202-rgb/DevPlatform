@@ -401,7 +401,7 @@ export default function AnalysisResult() {
       ) : analysis ? (
         <div className="space-y-6 animate-fade-in">
           {/* Overview Hero Card: Gauge + Meta + Share */}
-          <div className="overflow-hidden rounded-2xl border border-graphite-750 bg-graphite-900/90 p-6 shadow-panel">
+          <div className="dm-card p-6">
             <div className="flex flex-col items-center gap-6 lg:flex-row lg:items-start">
               {/* Score Gauge */}
               <div className="shrink-0 p-2">
@@ -432,7 +432,7 @@ export default function AnalysisResult() {
                     <button
                       onClick={handleRun}
                       disabled={isRunning}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-graphite-700 bg-graphite-800 px-3.5 py-1.5 text-xs font-semibold text-mist-100 transition-colors hover:border-amber-400/50 hover:text-amber-400 disabled:opacity-50 active:scale-95"
+                      className="btn-secondary !text-xs !py-1.5 !px-3.5"
                     >
                       <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
@@ -470,18 +470,18 @@ export default function AnalysisResult() {
                           readOnly
                           value={shareUrl}
                           onFocus={(e) => e.target.select()}
-                          className="min-w-0 flex-1 rounded-lg border border-graphite-700 bg-graphite-900 px-3 py-1.5 font-mono text-xs text-mist-200 outline-none focus:border-amber-400"
+                          className="min-w-0 flex-1 rounded-lg border border-graphite-700 bg-graphite-900 px-3 py-1.5 font-mono text-xs text-mist-200 outline-none focus:border-amber-400 transition-colors"
                         />
                         <button
                           onClick={handleCopyLink}
-                          className="rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-semibold text-graphite-950 transition-colors hover:bg-amber-300 shadow-sm"
+                          className="btn-primary !text-xs !py-1.5 !px-3"
                         >
                           {copied ? 'Copied ✓' : 'Copy Link'}
                         </button>
                         <button
                           onClick={handleUnshare}
                           disabled={isSharing}
-                          className="rounded-lg border border-graphite-700 bg-graphite-800 px-3 py-1.5 text-xs text-mist-400 transition-colors hover:border-rose-500/40 hover:text-rose-400 disabled:opacity-50"
+                          className="btn-ghost !text-xs !py-1.5 !px-3 text-mist-400 hover:text-rose-400"
                         >
                           {isSharing ? 'Revoking…' : 'Revoke'}
                         </button>
@@ -502,7 +502,7 @@ export default function AnalysisResult() {
                       <button
                         onClick={handleShare}
                         disabled={isSharing}
-                        className="self-start sm:self-auto rounded-lg border border-graphite-700 bg-graphite-800 px-3.5 py-1.5 text-xs font-semibold text-mist-200 transition-colors hover:border-amber-400/50 hover:text-amber-400 disabled:opacity-50"
+                        className="self-start sm:self-auto btn-secondary !text-xs !py-1.5 !px-3.5"
                       >
                         {isSharing ? 'Generating Link…' : 'Create Share Link'}
                       </button>

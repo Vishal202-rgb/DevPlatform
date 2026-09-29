@@ -7,13 +7,10 @@ export default function GithubConnectionCard({ banner }) {
     useGithubConnection();
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-graphite-750 bg-graphite-900/90 p-5 sm:p-6 shadow-panel transition-all">
-      {/* Subtle background glow */}
-      <div className="absolute -right-20 -top-20 h-44 w-44 rounded-full bg-amber-400/5 blur-3xl pointer-events-none" />
-
+    <div className="relative overflow-hidden rounded-xl border border-graphite-750/90 bg-graphite-900/90 p-4 sm:p-5 shadow-panel transition-all">
       {banner && (
         <div
-          className={`mb-4 flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-xs font-medium animate-fade-in ${
+          className={`mb-3.5 flex items-center gap-2 rounded-lg border px-3.5 py-2 text-xs font-medium animate-fade-in ${
             banner.type === 'error'
               ? 'border-rose-500/30 bg-rose-500/10 text-rose-300'
               : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
@@ -27,43 +24,43 @@ export default function GithubConnectionCard({ banner }) {
       {isLoading ? (
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Skeleton className="h-11 w-11 rounded-full" />
+            <Skeleton className="h-10 w-10 rounded-full" />
             <div className="space-y-1.5">
               <Skeleton className="h-4 w-32" />
               <Skeleton className="h-3 w-24" />
             </div>
           </div>
-          <Skeleton className="h-9 w-28 rounded-lg" />
+          <Skeleton className="h-8 w-28 rounded-lg" />
         </div>
       ) : isConnected ? (
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3.5">
-            <div className="relative">
+        <div className="flex flex-col gap-3.5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="relative shrink-0">
               <img
                 src={githubProfile.avatarUrl}
                 alt={githubProfile.username}
-                className="h-12 w-12 rounded-full border border-graphite-600 bg-graphite-800 object-cover shadow-sm"
+                className="h-11 w-11 rounded-full border border-graphite-600 bg-graphite-800 object-cover shadow-sm"
               />
               <span
-                className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-graphite-900 bg-emerald-500 shadow-sm"
-                title="GitHub Connected"
+                className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-graphite-900 bg-emerald-500 shadow-sm"
+                title="GitHub Connected & Synced"
               />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <a
                   href={githubProfile.profileUrl || `https://github.com/${githubProfile.username}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="font-mono text-sm font-semibold text-mist-100 hover:text-amber-400 transition-colors"
+                  className="font-mono text-sm font-semibold text-mist-50 hover:text-amber-400 transition-colors truncate"
                 >
                   @{githubProfile.username}
                 </a>
-                <span className="rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-mono font-medium text-emerald-400">
+                <span className="rounded bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.2 text-[10px] font-mono font-medium text-emerald-400 shrink-0">
                   Synced
                 </span>
               </div>
-              <p className="mt-0.5 text-xs text-mist-400">
+              <p className="mt-0.5 text-xs text-mist-400 font-mono">
                 Connected {new Date(githubProfile.connectedAt).toLocaleDateString(undefined, {
                   month: 'short',
                   day: 'numeric',
@@ -73,10 +70,10 @@ export default function GithubConnectionCard({ banner }) {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
             <Link
               to="/dashboard/repositories"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-amber-400 px-4 py-2 text-xs font-semibold text-graphite-950 transition-all hover:bg-amber-300 shadow-sm active:scale-95"
+              className="btn-primary text-xs"
             >
               <span>Browse Repositories</span>
               <span>→</span>
@@ -87,22 +84,22 @@ export default function GithubConnectionCard({ banner }) {
                   disconnect();
                 }
               }}
-              className="rounded-lg border border-graphite-700 bg-graphite-800/80 px-3 py-2 text-xs font-medium text-mist-400 transition-colors hover:border-rose-500/40 hover:bg-rose-500/10 hover:text-rose-300"
+              className="btn-ghost text-xs hover:text-rose-400"
             >
               Disconnect
             </button>
           </div>
         </div>
       ) : (
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-3.5">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-graphite-800 border border-graphite-700 text-mist-200">
+        <div className="flex flex-col gap-3.5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3.5 min-w-0">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-graphite-800 border border-graphite-700 text-mist-200 shadow-sm">
               <svg viewBox="0 0 16 16" className="h-5 w-5" fill="currentColor" aria-hidden="true">
                 <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z" />
               </svg>
             </div>
             <div>
-              <p className="text-sm font-semibold text-mist-100">Connect your GitHub account</p>
+              <p className="text-sm font-semibold text-mist-100">Connect GitHub account</p>
               <p className="mt-0.5 text-xs text-mist-400 leading-relaxed max-w-xl">
                 Synchronize your repositories to unlock automated AI code reviews, bug fixes, unit test generation, and architecture graphs.
               </p>
@@ -111,7 +108,7 @@ export default function GithubConnectionCard({ banner }) {
 
           <button
             onClick={connect}
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-mist-100 px-4 py-2 text-xs font-semibold text-graphite-950 transition-all hover:bg-white shadow-sm active:scale-95"
+            className="btn-primary text-xs shrink-0"
           >
             <svg viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor" aria-hidden="true">
               <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z" />

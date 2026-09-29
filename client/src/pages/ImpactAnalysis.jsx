@@ -158,12 +158,12 @@ export default function ImpactAnalysis() {
       )}
 
       {/* Target Component Selector & Run Card */}
-      <div className="rounded-2xl border border-graphite-750 bg-graphite-900/90 p-5 shadow-panel space-y-4">
+      <div className="dm-card p-5 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-amber-400">
             🎯 Target Component Selection
           </h2>
-          <span className="text-[11px] font-mono text-mist-400">
+          <span className="text-xs font-mono text-mist-400">
             {isLoadingGraph
               ? 'Loading dependency graph…'
               : `${analyzableFiles.length} files available in dependency graph`}
@@ -182,7 +182,7 @@ export default function ImpactAnalysis() {
             <button
               onClick={handleGenerateArchitecture}
               disabled={isGeneratingArch}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-amber-400 px-4 py-2 text-xs font-semibold text-graphite-950 hover:bg-amber-300 transition-colors font-mono disabled:opacity-50"
+              className="btn-primary"
             >
               <span>{isGeneratingArch ? '⏳ Generating Architecture Graph…' : '⚡ Generate Architecture'}</span>
             </button>
@@ -190,13 +190,13 @@ export default function ImpactAnalysis() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="md:col-span-2 space-y-1">
-              <label className="text-[11px] font-mono uppercase text-mist-400">
+              <label className="text-xs font-mono text-mist-400">
                 Source File / Module
               </label>
               <select
                 value={selectedFile}
                 onChange={(e) => setSelectedFile(e.target.value)}
-                className="w-full rounded-xl border border-graphite-750 bg-graphite-850 px-3.5 py-2.5 font-mono text-xs text-mist-100 outline-none focus:border-amber-400"
+                className="w-full rounded-xl border border-graphite-750 bg-graphite-850 px-3.5 py-2.5 font-mono text-xs text-mist-100 outline-none focus:border-amber-400 transition-colors"
               >
                 {analyzableFiles.map((f) => (
                   <option key={f.path} value={f.path}>
@@ -207,7 +207,7 @@ export default function ImpactAnalysis() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-[11px] font-mono uppercase text-mist-400">
+              <label className="text-xs font-mono text-mist-400">
                 Symbol Name (Optional)
               </label>
               <input
@@ -215,20 +215,20 @@ export default function ImpactAnalysis() {
                 value={targetSymbol}
                 onChange={(e) => setTargetSymbol(e.target.value)}
                 placeholder="e.g. loginUser, AuthModal"
-                className="w-full rounded-xl border border-graphite-750 bg-graphite-850 px-3.5 py-2.5 font-mono text-xs text-mist-100 outline-none focus:border-amber-400 placeholder:text-mist-600"
+                className="w-full rounded-xl border border-graphite-750 bg-graphite-850 px-3.5 py-2.5 font-mono text-xs text-mist-100 outline-none focus:border-amber-400 placeholder:text-mist-600 transition-colors"
               />
             </div>
           </div>
         )}
 
-        <div className="flex items-center justify-between pt-2 border-t border-graphite-800">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t border-graphite-800">
           <p className="text-xs text-mist-400">
             Calculates direct callers, transitive reverse dependencies, affected routes, and test suites.
           </p>
           <button
             onClick={() => handleRunImpactAnalysis()}
             disabled={isAnalyzing || !selectedFile || analyzableFiles.length === 0}
-            className="inline-flex items-center gap-2 rounded-xl bg-amber-400 px-5 py-2.5 text-xs font-semibold text-graphite-950 transition-all hover:bg-amber-300 disabled:opacity-50 shadow-sm active:scale-95 font-mono"
+            className="btn-ai"
           >
             <span>{isAnalyzing ? '⏳ Computing Blast Radius…' : '⚡ Explain Impact with AI'}</span>
           </button>
@@ -240,8 +240,8 @@ export default function ImpactAnalysis() {
         <div className="space-y-5 animate-fade-in">
           {/* Summary KPI Grid */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            <div className="rounded-xl border border-graphite-750 bg-graphite-900/90 p-4 shadow-panel">
-              <span className="text-[11px] font-mono uppercase tracking-wider text-mist-400 block">
+            <div className="dm-card dm-card-hover p-4">
+              <span className="text-xs font-mono text-mist-400 block font-medium">
                 Target File
               </span>
               <p className="mt-1 font-mono text-xs font-bold text-mist-100 truncate" title={impactResult.targetPath}>
@@ -254,43 +254,43 @@ export default function ImpactAnalysis() {
               )}
             </div>
 
-            <div className="rounded-xl border border-graphite-750 bg-graphite-900/90 p-4 shadow-panel">
-              <span className="text-[11px] font-mono uppercase tracking-wider text-amber-400 block font-semibold">
+            <div className="dm-card dm-card-hover p-4">
+              <span className="text-xs font-mono text-amber-400 block font-semibold">
                 Directly Affected
               </span>
               <div className="mt-1 flex items-baseline gap-2">
-                <span className="text-2xl font-bold font-mono text-amber-400">
+                <span className="text-3xl font-bold font-mono text-amber-400 tracking-tight tabular-nums">
                   {impactResult.directDependents?.length || 0}
                 </span>
                 <span className="text-xs text-mist-400 font-mono">files</span>
               </div>
             </div>
 
-            <div className="rounded-xl border border-graphite-750 bg-graphite-900/90 p-4 shadow-panel">
-              <span className="text-[11px] font-mono uppercase tracking-wider text-purple-400 block font-semibold">
+            <div className="dm-card dm-card-hover p-4">
+              <span className="text-xs font-mono text-purple-400 block font-semibold">
                 Indirectly Affected
               </span>
               <div className="mt-1 flex items-baseline gap-2">
-                <span className="text-2xl font-bold font-mono text-purple-400">
+                <span className="text-3xl font-bold font-mono text-purple-400 tracking-tight tabular-nums">
                   {impactResult.indirectDependents?.length || 0}
                 </span>
                 <span className="text-xs text-mist-400 font-mono">downstream</span>
               </div>
             </div>
 
-            <div className="rounded-xl border border-graphite-750 bg-graphite-900/90 p-4 shadow-panel">
-              <span className="text-[11px] font-mono uppercase tracking-wider text-sky-400 block font-semibold">
+            <div className="dm-card dm-card-hover p-4">
+              <span className="text-xs font-mono text-sky-400 block font-semibold">
                 Potential APIs &amp; Tests
               </span>
               <div className="mt-1 flex items-baseline gap-2">
-                <span className="text-xl font-bold font-mono text-sky-300">
+                <span className="text-xl font-bold font-mono text-sky-300 tracking-tight">
                   {impactResult.affectedRoutes?.length || 0} APIs / {impactResult.affectedTests?.length || 0} Tests
                 </span>
               </div>
             </div>
 
-            <div className="rounded-xl border border-graphite-750 bg-graphite-900/90 p-4 shadow-panel">
-              <span className="text-[11px] font-mono uppercase tracking-wider text-mist-400 block">
+            <div className="dm-card dm-card-hover p-4">
+              <span className="text-xs font-mono text-mist-400 block font-medium">
                 Calculated Risk
               </span>
               <div className="mt-1 flex items-center gap-2">
@@ -311,7 +311,7 @@ export default function ImpactAnalysis() {
 
           {/* AI Explanation Box */}
           {impactResult.aiExplanation && (
-            <div className="rounded-2xl border border-amber-400/30 bg-graphite-900/95 p-5 shadow-panel space-y-3">
+            <div className="dm-card p-5 space-y-3 border-amber-400/30">
               <div className="flex items-center gap-2 border-b border-graphite-800 pb-3">
                 <span className="text-base">🤖</span>
                 <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-amber-400">
@@ -327,7 +327,7 @@ export default function ImpactAnalysis() {
           {/* Affected Files Breakdown Lists */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Direct Dependents */}
-            <div className="rounded-xl border border-graphite-750 bg-graphite-900/90 p-4 space-y-3">
+            <div className="dm-card p-4 space-y-3">
               <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-mist-300 flex items-center justify-between">
                 <span>Directly Affected Files ({impactResult.directDependents?.length || 0})</span>
                 <span className="text-[10px] text-mist-500 font-normal">Immediate callers</span>
@@ -356,7 +356,7 @@ export default function ImpactAnalysis() {
             </div>
 
             {/* Indirect Dependents */}
-            <div className="rounded-xl border border-graphite-750 bg-graphite-900/90 p-4 space-y-3">
+            <div className="dm-card p-4 space-y-3">
               <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-mist-300 flex items-center justify-between">
                 <span>Indirect Downstream Files ({impactResult.indirectDependents?.length || 0})</span>
                 <span className="text-[10px] text-mist-500 font-normal">Transitive cascade</span>
@@ -420,7 +420,7 @@ export default function ImpactAnalysis() {
             actionLink={selectedRepoId ? `/dashboard/repositories/${selectedRepoId}/architecture` : "/dashboard/repositories"}
           />
         ) : (
-          <div className="overflow-x-auto rounded-2xl border border-graphite-750 bg-graphite-900/90 shadow-panel">
+          <div className="overflow-x-auto dm-card">
             <table className="w-full text-left text-xs sm:text-sm whitespace-nowrap">
               <thead className="border-b border-graphite-800 bg-graphite-850/80 font-mono text-[11px] uppercase tracking-wider text-mist-400">
                 <tr>
@@ -458,7 +458,7 @@ export default function ImpactAnalysis() {
                           setSelectedFile(m.path);
                           handleRunImpactAnalysis(m.path);
                         }}
-                        className="rounded-lg border border-graphite-700 bg-graphite-800 px-2.5 py-1 text-xs text-mist-300 hover:text-amber-400 hover:border-amber-400/40 transition-colors font-mono"
+                        className="btn-secondary !text-xs !py-1 !px-2.5 font-mono"
                       >
                         Analyze Impact →
                       </button>
