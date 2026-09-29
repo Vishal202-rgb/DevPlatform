@@ -3,6 +3,7 @@ const ApiError = require('../utils/ApiError');
 const env = require('../config/env');
 const Repository = require('../models/Repository');
 const Analysis = require('../models/Analysis');
+const AuditLog = require('../models/AuditLog');
 const githubService = require('./githubService');
 const geminiService = require('./geminiService');
 const architectureService = require('./architectureService');
@@ -533,17 +534,44 @@ const createIssuePullRequest = async (
   const { accessToken } = user.github;
   const { githubOwner, name, defaultBranch } = repository;
 
+  const cleanHead = headBranch.trim().replace(/^refs\/heads\//, '');
+  const cleanBase = (baseBranch || defaultBranch || 'main').trim().replace(/^refs\/heads\//, '');
+
   const pr = await githubService.createPullRequest(accessToken, githubOwner, name, {
     title: title.trim(),
     body: (description || '').trim(),
-    head: headBranch.trim(),
-    base: (baseBranch || defaultBranch).trim(),
+    head: cleanHead,
+    base: cleanBase,
   });
 
   issue.prUrl = pr.htmlUrl;
   issue.prNumber = pr.number;
   issue.prStatus = 'created';
+  if (issue.fixBranch && issue.fixBranch === cleanHead) {
+    issue.fixStatus = 'applied';
+  }
   await analysis.save();
+
+  try {
+    await AuditLog.create({
+      repository: repository._id,
+      user: userId,
+      action: 'pr_created',
+      status: 'success',
+      targetFile: issue.file || '',
+      issueId: issue._id,
+      details: {
+        prNumber: pr.number,
+        prUrl: pr.htmlUrl,
+        headBranch: cleanHead,
+        baseBranch: cleanBase,
+        title: title.trim(),
+      },
+      message: `Created Pull Request #${pr.number} for ${issue.file || 'changes'} (${cleanHead} -> ${cleanBase})`,
+    });
+  } catch (_logErr) {
+    // Non-fatal if audit log fails
+  }
 
   return { pr, issue };
 };

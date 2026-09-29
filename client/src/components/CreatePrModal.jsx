@@ -122,8 +122,8 @@ export default function CreatePrModal({
       const result = await createIssuePr(analysisId, issue._id, {
         title: title.trim(),
         description: description.trim(),
-        headBranch,
-        baseBranch,
+        headBranch: headBranch.trim(),
+        baseBranch: (baseBranch || 'main').trim(),
       });
 
       setCreatedPr(result.pr);

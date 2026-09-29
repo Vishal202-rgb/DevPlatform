@@ -25,7 +25,7 @@ const githubApi = axios.create({
 
 /**
  * Translate axios/GitHub errors into ApiError with sensible status codes,
- * including explicit handling of GitHub's rate-limit response shape.
+ * including explicit handling of GitHub's rate-limit response shape and detailed validation errors.
  */
 const handleGithubError = (error, fallbackMessage) => {
   if (error.response) {
@@ -44,10 +44,33 @@ const handleGithubError = (error, fallbackMessage) => {
       throw new ApiError(401, 'GitHub authorization is invalid or has expired. Please reconnect GitHub.');
     }
 
-    throw new ApiError(status, data?.message || fallbackMessage);
+    // Extract detailed, actionable validation error messages from GitHub's response
+    let detailedMessage = data?.message || fallbackMessage;
+    if (Array.isArray(data?.errors) && data.errors.length > 0) {
+      const errorDetails = data.errors
+        .map((err) => {
+          if (typeof err === 'string') return err;
+          if (err.message) return err.message;
+          if (err.field && err.code) return `Field '${err.field}' ${err.code.replace(/_/g, ' ')}`;
+          return JSON.stringify(err);
+        })
+        .filter(Boolean);
+
+      if (errorDetails.length > 0) {
+        if (data.message && data.message.toLowerCase() === 'validation failed') {
+          detailedMessage = errorDetails.join('. ');
+        } else if (data.message) {
+          detailedMessage = `${data.message}: ${errorDetails.join('. ')}`;
+        } else {
+          detailedMessage = errorDetails.join('. ');
+        }
+      }
+    }
+
+    throw new ApiError(status, detailedMessage);
   }
 
-  throw new ApiError(502, fallbackMessage);
+  throw new ApiError(502, error.message || fallbackMessage);
 };
 
 /**
@@ -429,9 +452,11 @@ const commitFileUpdate = async (accessToken, owner, repo, path, newContent, mess
  * Compare two branches to get changed files and patch diff.
  */
 const compareBranches = async (accessToken, owner, repo, base, head) => {
+  const cleanBase = (base || '').trim().replace(/^refs\/heads\//, '');
+  const cleanHead = (head || '').trim().replace(/^refs\/heads\//, '');
   try {
     const { data } = await githubApi.get(
-      `/repos/${owner}/${repo}/compare/${encodeURIComponent(base)}...${encodeURIComponent(head)}`,
+      `/repos/${owner}/${repo}/compare/${encodeURIComponent(cleanBase)}...${encodeURIComponent(cleanHead)}`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
     const files = (data.files || []).map((f) => ({
@@ -449,7 +474,7 @@ const compareBranches = async (accessToken, owner, repo, base, head) => {
       behindBy: data.behind_by || 0,
     };
   } catch (error) {
-    handleGithubError(error, `Failed to compare branches "${base}" and "${head}" on GitHub.`);
+    handleGithubError(error, `Failed to compare branches "${cleanBase}" and "${cleanHead}" on GitHub.`);
   }
 };
 
@@ -457,12 +482,35 @@ const compareBranches = async (accessToken, owner, repo, base, head) => {
  * Create a new Pull Request on GitHub.
  */
 const createPullRequest = async (accessToken, owner, repo, { title, body, head, base }) => {
+  const cleanHead = (head || '').trim().replace(/^refs\/heads\//, '');
+  const cleanBase = (base || '').trim().replace(/^refs\/heads\//, '');
+  const cleanTitle = (title || '').trim();
+  const cleanBody = typeof body === 'string' ? body.trim() : '';
+
+  // Log exact GitHub API request parameters (WITHOUT tokens/secrets)
+  console.log(`[github] Initiating PR creation for ${owner}/${repo}:`, {
+    owner,
+    repo,
+    title: cleanTitle,
+    head: cleanHead,
+    base: cleanBase,
+    bodyLength: cleanBody.length,
+  });
+
   try {
-    const { data } = await githubApi.post(
+    const { data, status } = await githubApi.post(
       `/repos/${owner}/${repo}/pulls`,
-      { title, body, head, base },
+      {
+        title: cleanTitle,
+        body: cleanBody,
+        head: cleanHead,
+        base: cleanBase,
+      },
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
+
+    console.log(`[github] Pull request created successfully on ${owner}/${repo}: #${data.number} (${data.html_url}) [HTTP ${status}]`);
+
     return {
       id: data.id,
       number: data.number,
@@ -472,7 +520,60 @@ const createPullRequest = async (accessToken, owner, repo, { title, body, head, 
       createdAt: data.created_at,
     };
   } catch (error) {
-    handleGithubError(error, `Failed to create pull request for branch "${head}" on GitHub.`);
+    if (error.response) {
+      console.error(`[github] Pull request creation failed on ${owner}/${repo} [HTTP ${error.response.status}]:`, {
+        status: error.response.status,
+        data: error.response.data,
+        errors: error.response.data?.errors,
+        owner,
+        repo,
+        head: cleanHead,
+        base: cleanBase,
+      });
+
+      // If a pull request already exists for this branch, lookup the existing PR and return it
+      const errorMessage = error.response.data?.errors?.[0]?.message || error.response.data?.message || '';
+      if (
+        error.response.status === 422 &&
+        typeof errorMessage === 'string' &&
+        errorMessage.toLowerCase().includes('already exists')
+      ) {
+        try {
+          console.log(`[github] PR already exists for ${cleanHead}, attempting to fetch existing PR details...`);
+          const existingRes = await githubApi.get(`/repos/${owner}/${repo}/pulls`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+            params: { head: `${owner}:${cleanHead}`, state: 'all' },
+          });
+
+          let existingPr = existingRes.data?.[0];
+          if (!existingPr) {
+            const fallbackRes = await githubApi.get(`/repos/${owner}/${repo}/pulls`, {
+              headers: { Authorization: `Bearer ${accessToken}` },
+              params: { head: cleanHead, state: 'all' },
+            });
+            existingPr = fallbackRes.data?.[0];
+          }
+
+          if (existingPr) {
+            console.log(`[github] Re-using existing PR #${existingPr.number} (${existingPr.html_url}) for ${cleanHead}`);
+            return {
+              id: existingPr.id,
+              number: existingPr.number,
+              title: existingPr.title,
+              htmlUrl: existingPr.html_url,
+              state: existingPr.state,
+              createdAt: existingPr.created_at,
+            };
+          }
+        } catch (fetchErr) {
+          console.warn(`[github] Could not fetch existing PR for ${cleanHead}:`, fetchErr.message);
+        }
+      }
+    } else {
+      console.error(`[github] Pull request creation network error on ${owner}/${repo}:`, error.message);
+    }
+
+    handleGithubError(error, `Failed to create pull request for branch "${cleanHead}" on GitHub.`);
   }
 };
 

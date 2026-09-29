@@ -90,7 +90,7 @@ export default function Tests() {
     setError('');
     setSuccessMsg('');
 
-    const targetBranch = branchFromUrl || paramBranch || issue.testBranch || issue.fixBranch || '';
+    const targetBranch = branchFromUrl !== undefined ? branchFromUrl : (issue.testBranch || issue.fixBranch || '');
     setActiveBranch(targetBranch);
 
     // Update URL query parameters so navigation & refreshes preserve the full context
@@ -100,7 +100,11 @@ export default function Tests() {
         next.set('repositoryId', activeRepoId);
         next.set('issueId', issue._id || issue.id);
         if (issue.file) next.set('filePath', issue.file);
-        if (targetBranch) next.set('branch', targetBranch);
+        if (targetBranch) {
+          next.set('branch', targetBranch);
+        } else {
+          next.delete('branch');
+        }
         if (issue.analysis || issue.analysisId) next.set('analysisId', issue.analysis || issue.analysisId);
         return next;
       }, { replace: true });
@@ -108,7 +112,7 @@ export default function Tests() {
 
     // Attempt restoring previously generated test state for this issue
     restoreSessionState(activeRepoId, issue._id || issue.id);
-  }, [selectedRepoId, paramBranch, setSearchParams, restoreSessionState]);
+  }, [selectedRepoId, setSearchParams, restoreSessionState]);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
